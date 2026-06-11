@@ -1,22 +1,28 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Film } from 'lucide-react'
+import { Eye, EyeOff, GraduationCap, Sparkles } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import Button from '../../components/ui/Button'
-import Input  from '../../components/ui/Input'
+import { useLanguage } from '../../context/LanguageContext'
+
+const isAdminUser = (user) => {
+  const roles = user?.roles || (user?.role ? [user.role] : [])
+  return roles.some(role => String(role).toLowerCase() === 'admin') || String(user?.role).toLowerCase() === 'admin'
+}
 
 export default function LoginPage() {
   const { login, loading } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
 
-  const [form,   setForm]   = useState({ email: '', password: '' })
+  const [form, setForm] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState({})
   const [showPw, setShowPw] = useState(false)
 
   const validate = () => {
     const e = {}
-    if (!form.email)    e.email    = 'Email is required'
-    if (!form.password) e.password = 'Password is required'
+    if (!form.email) e.email = t('auth.emailOrUsernameRequired')
+    if (!form.password) e.password = t('auth.passwordRequired')
     return e
   }
 
@@ -27,109 +33,98 @@ export default function LoginPage() {
     setErrors({})
     const result = await login(form)
     if (result.success) {
-      if (!result.user?.levelId) navigate('/select-level', { replace: true })
-      else navigate('/dashboard', { replace: true })
+      if (isAdminUser(result.user)) {
+        navigate('/admin', { replace: true })
+        return
+      }
+      const hasLevel = result.user?.englishLevel != null || result.user?.levelId != null || !!result.user?.levelName
+      navigate(hasLevel ? '/dashboard' : '/placement', { replace: true })
     }
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left — cinema panel */}
-      <div className="hidden lg:flex flex-col justify-between w-1/2 bg-dark-800 border-r border-white/8 p-12 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl" />
-        </div>
-        <div className="flex items-center gap-2 relative">
-          <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center">
-            <Film size={17} className="text-white" />
-          </div>
-          <span className="font-display font-bold text-white text-xl">
-            Cine<span className="text-brand-400">Lingo</span>
-          </span>
-        </div>
-
-        <div className="relative">
-          <blockquote className="text-3xl font-display text-white leading-snug mb-6">
-            "Language is the road map of a culture. It tells you where its people come from and where they are going."
-          </blockquote>
-          <p className="text-white/40 text-sm">— Rita Mae Brown</p>
-
-          <div className="flex gap-6 mt-10">
-            {[['12K+','Learners'],['200+','Units'],['6','Levels']].map(([n,l]) => (
-              <div key={l}>
-                <p className="text-2xl font-bold text-brand-400 font-display">{n}</p>
-                <p className="text-xs text-white/40 mt-0.5">{l}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <p className="text-white/20 text-xs relative">© {new Date().getFullYear()} CineLingo</p>
-      </div>
-
-      {/* Right — form */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-16 bg-dark-900">
-        <div className="w-full max-w-sm">
-          {/* Mobile logo */}
-          <div className="flex items-center gap-2 justify-center mb-10 lg:hidden">
-            <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center">
-              <Film size={17} className="text-white" />
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-24 text-slate-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(193,125,60,0.16),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(155,115,85,0.16),transparent_32%)]" />
+      <div className="relative grid w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card dark:border-slate-700 dark:bg-slate-800 lg:grid-cols-[1fr_0.9fr]">
+        <div className="hidden bg-gradient-to-br from-brand-500 via-brand-600 to-accent-600 p-10 text-white lg:flex lg:flex-col lg:justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-brand-600">
+              <GraduationCap size={18} />
             </div>
-            <span className="font-display font-bold text-white text-xl">
-              Cine<span className="text-brand-400">Lingo</span>
-            </span>
+            <span className="text-xl font-black tracking-normal">CineLingo</span>
+          </div>
+          <div>
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1.5">
+              <Sparkles size={14} />
+              <span className="text-xs font-bold uppercase tracking-normal text-white/80">{t('auth.loginBadge')}</span>
+            </div>
+            <p className="max-w-md text-3xl font-black leading-tight tracking-normal">
+              {t('auth.loginHeroTitle')}
+            </p>
+            <p className="mt-4 max-w-sm text-sm leading-6 text-white/75">
+              {t('auth.loginHeroText')}
+            </p>
+          </div>
+          <p className="text-xs text-white/55">{t('auth.secureSession')}</p>
+        </div>
+
+        <div className="p-6 sm:p-10">
+          <div className="mb-8 lg:hidden">
+            <div className="mb-4 flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-accent-500 text-white">
+                <GraduationCap size={18} />
+              </div>
+              <span className="text-xl font-black tracking-normal text-slate-950 dark:text-white">Cine<span className="text-brand-500">Lingo</span></span>
+            </div>
           </div>
 
-          <h1 className="text-2xl font-bold font-display text-white mb-1">Welcome back</h1>
-          <p className="text-white/40 text-sm mb-8">Sign in to continue your learning journey</p>
+          <h1 className="text-3xl font-black tracking-normal text-slate-950 dark:text-white">{t('auth.loginTitle')}</h1>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t('auth.loginSubtitle')}</p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
             <div>
-              <label className="text-sm font-medium text-white/70 block mb-1.5">Email address</label>
+              <label className="field-label mb-1.5 block">{t('auth.emailOrUsername')}</label>
               <input
-                type="email"
-                placeholder="you@example.com"
+                type="text"
+                placeholder={t('auth.emailOrUsernamePlaceholder')}
                 value={form.email}
                 onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                className="w-full bg-dark-800 border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white
-                           placeholder:text-white/25 focus:outline-none focus:ring-2 focus:ring-brand-500/50
-                           focus:border-brand-500/50 transition-all"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-sm transition-all placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
-              {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email}</p>}
+              {errors.email && <p className="mt-1.5 text-xs font-semibold text-red-500">{errors.email}</p>}
             </div>
 
             <div>
-              <label className="text-sm font-medium text-white/70 block mb-1.5">Password</label>
+              <label className="field-label mb-1.5 block">{t('auth.password')}</label>
               <div className="relative">
                 <input
                   type={showPw ? 'text' : 'password'}
-                  placeholder="••••••••"
+                  placeholder={t('auth.passwordPlaceholder')}
                   value={form.password}
                   onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                  className="w-full bg-dark-800 border border-white/15 rounded-xl px-4 py-2.5 pr-10 text-sm text-white
-                             placeholder:text-white/25 focus:outline-none focus:ring-2 focus:ring-brand-500/50
-                             focus:border-brand-500/50 transition-all"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 pr-10 text-sm text-slate-900 shadow-sm transition-all placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPw(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+                  aria-label={showPw ? t('auth.hidePassword') : t('auth.showPassword')}
                 >
                   {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
-              {errors.password && <p className="text-xs text-red-400 mt-1">{errors.password}</p>}
+              {errors.password && <p className="mt-1.5 text-xs font-semibold text-red-500">{errors.password}</p>}
             </div>
 
-            <Button type="submit" fullWidth size="lg" loading={loading} variant="brand" className="mt-2 shadow-amber">
-              Sign In
+            <Button type="submit" fullWidth size="lg" loading={loading} variant="brand">
+              {t('auth.signIn')}
             </Button>
           </form>
 
-          <p className="text-center text-sm text-white/40 mt-6">
-            Don't have an account?{' '}
-            <Link to="/register" className="text-brand-400 font-medium hover:text-brand-300 transition-colors">
-              Create one free
+          <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+            {t('auth.newTo')}{' '}
+            <Link to="/register" className="font-bold text-brand-600 transition-colors hover:text-brand-700 dark:text-brand-300">
+              {t('auth.createAccount')}
             </Link>
           </p>
         </div>

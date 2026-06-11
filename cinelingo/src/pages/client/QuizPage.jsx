@@ -1,142 +1,203 @@
-import { useState } from 'react'
-import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, CheckCircle, XCircle } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { Check, CheckCircle, ChevronLeft, ChevronRight, Circle, XCircle } from 'lucide-react'
 import Button from '../../components/ui/Button'
-import { cn } from '../../utils/helpers'
+import { EmptyState } from '../../components/ui/PageHeader'
+import { cn, getApiErrorMessage } from '../../utils/helpers'
+import { quizService } from '../../services'
 
-const MOCK_QUESTIONS = [
-  { id:'q1', text:'Choose the correct meaning of "eloquent":', options:[
-    { id:'a', text:'Unable to speak clearly'   },
-    { id:'b', text:'Well-spoken and expressive' },
-    { id:'c', text:'Very loud and noisy'        },
-    { id:'d', text:'Shy and reserved'           },
-  ], correct:'b' },
-  { id:'q2', text:'Which sentence uses "subtle" correctly?', options:[
-    { id:'a', text:'The music was subtle — everyone could hear it from miles away.' },
-    { id:'b', text:'She gave a subtle hint that she wanted to leave.'               },
-    { id:'c', text:'He made a subtle explosion in the lab.'                         },
-    { id:'d', text:'The elephant was subtle as it walked through the forest.'       },
-  ], correct:'b' },
-  { id:'q3', text:'What does "persuade" mean?', options:[
-    { id:'a', text:'To confuse someone'                     },
-    { id:'b', text:'To convince someone to do something'    },
-    { id:'c', text:'To ignore someone completely'           },
-    { id:'d', text:'To argue aggressively'                  },
-  ], correct:'b' },
-  { id:'q4', text:'Fill in the blank: "She was _____ in her speech, choosing each word carefully."', options:[
-    { id:'a', text:'careless'   },
-    { id:'b', text:'candid'     },
-    { id:'c', text:'articulate' },
-    { id:'d', text:'vague'      },
-  ], correct:'c' },
-  { id:'q5', text:'Which word is a synonym for "candid"?', options:[
-    { id:'a', text:'Dishonest' },
-    { id:'b', text:'Honest'    },
-    { id:'c', text:'Timid'     },
-    { id:'d', text:'Rude'      },
-  ], correct:'b' },
-]
+const optionList = (question) => [
+  { id: 'A', text: question.optionA },
+  { id: 'B', text: question.optionB },
+  { id: 'C', text: question.optionC },
+  { id: 'D', text: question.optionD },
+].filter(opt => opt.text)
 
 export default function QuizPage() {
-  const navigate       = useNavigate()
-  const ctx            = useOutletContext()
-  const setChatOpen    = ctx?.setChatOpen ?? (() => {})
-  const [current, setCurrent]   = useState(0)
-  const [answers, setAnswers]   = useState({})
-  const [submitted, setSubmitted] = useState(false)
+  const { quizId } = useParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const ctx = useOutletContext()
+  const setChatOpen = ctx?.setChatOpen ?? (() => {})
+  const startedAt = useRef(Date.now())
 
-  const q        = MOCK_QUESTIONS[current]
-  const total    = MOCK_QUESTIONS.length
-  const progress = Math.round(((current + 1) / total) * 100)
+  const [quiz, setQuiz] = useState(null)
+  const [current, setCurrent] = useState(0)
+  const [answers, setAnswers] = useState({})
+  const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let active = true
+
+    const load = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = location.state?.unitId
+          ? await quizService.getByUnit(location.state.unitId)
+          : await quizService.getById(quizId)
+        if (active) setQuiz(res.data)
+      } catch (err) {
+        if (active) setError(getApiErrorMessage(err, 'Could not load quiz.'))
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    load()
+    return () => { active = false }
+  }, [location.state?.unitId, quizId])
+
+  const questions = useMemo(() => Array.isArray(quiz?.questions) ? quiz.questions : [], [quiz])
+  const q = questions[current]
+  const total = questions.length
+  const progress = total ? Math.round(((current + 1) / total) * 100) : 0
+  const answeredCount = Object.values(answers).filter(Boolean).length
 
   const handleSelect = (optId) => {
-    if (submitted) return
+    if (result || !q) return
     setAnswers(p => ({ ...p, [q.id]: optId }))
   }
 
-  const handleSubmit = () => {
-    setSubmitted(true)
+  const handleSubmit = async () => {
+    setSubmitting(true)
     setChatOpen(true)
+    try {
+      const payload = {
+        quizId: quiz.id,
+        timeTakenSeconds: Math.round((Date.now() - startedAt.current) / 1000),
+        answers: questions.map(question => ({
+          questionId: question.id,
+          selectedOption: answers[question.id],
+        })),
+      }
+      const res = await quizService.submit(payload)
+      setResult(res.data)
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Could not submit quiz.'))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  if (submitted) {
-    const correct = MOCK_QUESTIONS.filter(q => answers[q.id] === q.correct).length
-    const pct     = Math.round((correct / total) * 100)
+  const reset = () => {
+    setCurrent(0)
+    setAnswers({})
+    setResult(null)
+    startedAt.current = Date.now()
+  }
+
+  if (loading) {
     return (
-      <div className="max-w-lg mx-auto px-6 py-16 text-center animate-slide-up">
-        <div className={cn('w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6',
-          pct >= 70 ? 'bg-green-100' : 'bg-red-100')}>
-          {pct >= 70
-            ? <CheckCircle size={48} className="text-green-500" />
-            : <XCircle    size={48} className="text-red-500"   />}
+      <div className="mx-auto max-w-screen-md px-5 py-8 sm:px-6">
+        <div className="skeleton h-8 w-36" />
+        <div className="skeleton mt-8 h-40 w-full" />
+        <div className="mt-4 space-y-3">
+          {[1, 2, 3, 4].map(item => <div key={item} className="skeleton h-14 w-full" />)}
         </div>
-        <h1 className="text-3xl font-bold font-display text-dark-900 mb-2">
-          {pct >= 80 ? 'Excellent!' : pct >= 60 ? 'Good Job!' : 'Keep Practicing!'}
+      </div>
+    )
+  }
+
+  if (error || !q) {
+    return (
+      <div className="mx-auto max-w-screen-md px-5 py-8 sm:px-6">
+        <EmptyState icon={XCircle} title="Quiz unavailable" description={error || 'Quiz not found.'} />
+      </div>
+    )
+  }
+
+  if (result) {
+    const score = result.score ?? 0
+    const correct = result.correctCount ?? 0
+    const totalCount = result.totalCount ?? total
+    return (
+      <div className="mx-auto max-w-screen-md px-5 py-12 text-center sm:px-6">
+        <div className={cn('mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl', result.passed ? 'bg-brand-100 text-brand-600' : 'bg-red-100 text-red-600')}>
+          {result.passed ? <CheckCircle size={38} /> : <XCircle size={38} />}
+        </div>
+        <p className="text-xs font-bold uppercase tracking-normal text-brand-600">Quiz Result</p>
+        <h1 className="mt-2 text-3xl font-black tracking-normal text-dark-900">
+          {score >= 80 ? 'Excellent work' : score >= 60 ? 'Solid progress' : 'Keep practicing'}
         </h1>
-        <p className="text-5xl font-bold text-brand-500 font-display my-4">{pct}%</p>
-        <p className="text-dark-600">{correct} correct out of {total} questions</p>
-        <div className="flex gap-3 justify-center mt-8">
-          <Button variant="secondary" onClick={() => navigate(-1)}>← Back to Unit</Button>
-          <Button onClick={() => { setSubmitted(false); setCurrent(0); setAnswers({}) }}>Retry Quiz</Button>
+        <div className="mx-auto my-7 max-w-xs rounded-2xl border border-cream-200 bg-white p-6 shadow-card">
+          <p className="text-6xl font-black tracking-normal text-brand-600">{score}%</p>
+          <p className="mt-2 text-sm text-dark-500">{correct} correct out of {totalCount} questions</p>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <Button variant="secondary" onClick={() => navigate(-1)}>Back to Unit</Button>
+          <Button onClick={reset}>Retry Quiz</Button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-8 animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <button onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-sm text-dark-600 hover:text-dark-900 transition-colors">
+    <div className="mx-auto max-w-screen-md px-5 py-8 sm:px-6">
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1.5 rounded-xl px-2 py-1 text-sm font-semibold text-dark-600 transition-colors hover:bg-dark-900/5 hover:text-dark-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+        >
           <ChevronLeft size={16} /> Exit Quiz
         </button>
-        <span className="text-sm font-medium text-dark-700">{current + 1} / {total}</span>
+        <span className="rounded-full border border-cream-200 bg-white px-3 py-1 text-xs font-bold text-dark-600">
+          {answeredCount} / {total} answered
+        </span>
       </div>
 
-      <div className="h-1.5 bg-cream-200 rounded-full mb-8 overflow-hidden">
-        <div className="h-full bg-brand-500 rounded-full transition-all duration-500" style={{ width:`${progress}%` }} />
+      <div className="mb-8 overflow-hidden rounded-full bg-cream-200">
+        <div className="h-2 rounded-full bg-brand-500 transition-all duration-500" style={{ width: `${progress}%` }} />
       </div>
 
-      <div className="bg-white rounded-3xl border border-cream-200 shadow-card p-7 mb-6">
-        <p className="text-xs font-semibold text-brand-500 uppercase tracking-wide mb-3">Question {current + 1}</p>
-        <h2 className="text-xl font-semibold text-dark-900 font-display leading-snug">{q.text}</h2>
-      </div>
+      <section className="mb-6 rounded-2xl border border-cream-200 bg-white p-6 shadow-card sm:p-8">
+        <p className="mb-3 text-xs font-bold uppercase tracking-normal text-brand-600">Question {current + 1}</p>
+        <h1 className="text-2xl font-black leading-tight tracking-normal text-dark-900">{q.questionText}</h1>
+      </section>
 
-      <div className="space-y-3 mb-8">
-        {q.options.map((opt, i) => {
+      <div className="mb-8 space-y-3">
+        {optionList(q).map((opt, i) => {
           const selected = answers[q.id] === opt.id
           return (
-            <button key={opt.id} onClick={() => handleSelect(opt.id)}
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => handleSelect(opt.id)}
               className={cn(
-                'w-full flex items-center gap-3 px-5 py-4 rounded-2xl border-2 text-left transition-all font-medium text-sm',
+                'flex w-full items-center gap-4 rounded-2xl border px-4 py-4 text-left text-sm font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500',
                 selected
-                  ? 'border-brand-500 bg-brand-50 text-brand-700'
-                  : 'border-cream-200 bg-white text-dark-800 hover:border-brand-300 hover:bg-cream-50',
-              )}>
+                  ? 'border-brand-500 bg-brand-50 text-brand-700 shadow-sm'
+                  : 'border-cream-200 bg-white text-dark-800 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card',
+              )}
+            >
               <span className={cn(
-                'w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center text-xs font-bold',
-                selected ? 'border-brand-500 bg-brand-500 text-white' : 'border-cream-300',
+                'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border text-xs font-black',
+                selected ? 'border-brand-500 bg-brand-500 text-white' : 'border-cream-300 bg-cream-50 text-dark-500',
               )}>
-                {selected ? '✓' : String.fromCharCode(65 + i)}
+                {selected ? <Check size={15} /> : String.fromCharCode(65 + i)}
               </span>
-              {opt.text}
+              <span className="min-w-0 flex-1 leading-6">{opt.text}</span>
+              {!selected && <Circle size={16} className="text-dark-300" />}
             </button>
           )
         })}
       </div>
 
-      <div className="flex gap-3">
-        <Button variant="secondary" onClick={() => setCurrent(c => Math.max(0, c-1))} disabled={current===0}>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Button variant="secondary" onClick={() => setCurrent(c => Math.max(0, c - 1))} disabled={current === 0}>
           <ChevronLeft size={16} /> Previous
         </Button>
         {current < total - 1 ? (
-          <Button className="flex-1" onClick={() => setCurrent(c => c+1)} disabled={!answers[q.id]}>
+          <Button className="sm:flex-1" onClick={() => setCurrent(c => c + 1)} disabled={!answers[q.id]}>
             Next <ChevronRight size={16} />
           </Button>
         ) : (
-          <Button className="flex-1" variant="brand"
-            disabled={Object.keys(answers).length < total} onClick={handleSubmit}>
-            Submit Quiz 🎯
+          <Button className="sm:flex-1" variant="brand" loading={submitting} disabled={answeredCount < total} onClick={handleSubmit}>
+            Submit Quiz
           </Button>
         )}
       </div>

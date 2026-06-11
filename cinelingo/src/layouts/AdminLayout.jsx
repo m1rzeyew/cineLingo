@@ -1,49 +1,49 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
-  Clapperboard, LayoutDashboard, Users, BookOpen,
-  GraduationCap, HelpCircle, BarChart2, LogOut,
-  ChevronLeft, ChevronRight, Menu, Bell,
+  BarChart2, Bell, BookOpen, ChevronLeft, ChevronRight, FileQuestion, Film,
+  GraduationCap, Languages, LayoutDashboard, LogOut, Menu, Users,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Avatar from '../components/ui/Avatar'
+import ThemeToggle from '../components/common/ThemeToggle'
+import NotificationsDropdown from '../components/common/NotificationsDropdown'
 import { cn } from '../utils/helpers'
 
 const LINKS = [
-  { to: '/admin',                label: 'Dashboard',     icon: LayoutDashboard, end: true },
-  { to: '/admin/users',          label: 'Users',         icon: Users },
-  { to: '/admin/levels',         label: 'Levels',        icon: GraduationCap },
-  { to: '/admin/units',          label: 'Units',         icon: BookOpen },
-  { to: '/admin/quizzes',        label: 'Quizzes',       icon: HelpCircle },
-  { to: '/admin/analytics',      label: 'Analytics',     icon: BarChart2 },
-  { to: '/admin/notifications',  label: 'Notifications', icon: Bell },
+  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/admin/users', label: 'Users', icon: Users },
+  { to: '/admin/units', label: 'Units', icon: BookOpen },
+  { to: '/admin/videos', label: 'Videos', icon: Film },
+  { to: '/admin/words', label: 'Words', icon: Languages },
+  { to: '/admin/quizzes', label: 'Quizzes', icon: FileQuestion },
+  { to: '/admin/analytics', label: 'Analytics', icon: BarChart2 },
+  { to: '/admin/notifications', label: 'Notifications', icon: Bell },
 ]
 
 function SidebarContent({ collapsed, onLogout }) {
   const { user } = useAuth()
 
   return (
-    <div className="flex flex-col h-full bg-white border-r border-cream-200">
-      {/* Logo */}
+    <div className="flex h-full flex-col border-r border-slate-200 bg-white shadow-card dark:border-slate-800 dark:bg-slate-900">
       <div className={cn(
-        'flex items-center gap-2.5 border-b border-cream-200 shrink-0',
-        collapsed ? 'px-3 py-4 justify-center' : 'px-5 py-4',
+        'flex shrink-0 items-center gap-2.5 border-b border-slate-200 dark:border-slate-800',
+        collapsed ? 'justify-center px-3 py-4' : 'px-5 py-4',
       )}>
-        <div className="w-8 h-8 bg-dark-900 rounded-xl flex items-center justify-center shrink-0">
-          <Clapperboard size={16} className="text-brand-400" />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-accent-500 text-white shadow-amber">
+          <GraduationCap size={18} />
         </div>
         {!collapsed && (
           <div>
-            <p className="font-display font-bold text-dark-900 text-base leading-none">
-              Cine<span className="text-brand-500">Lingo</span>
+            <p className="text-base font-black leading-none text-slate-950 dark:text-white">
+              Cine<span className="text-brand-500 dark:text-brand-300">Lingo</span>
             </p>
-            <p className="text-[10px] font-medium text-dark-400 mt-0.5 tracking-widest uppercase">Admin</p>
+            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-normal text-slate-400 dark:text-slate-500">Admin</p>
           </div>
         )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto thin-scroll">
+      <nav className="thin-scroll flex-1 space-y-0.5 overflow-y-auto px-2 py-4">
         {LINKS.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
@@ -56,21 +56,20 @@ function SidebarContent({ collapsed, onLogout }) {
           >
             <Icon size={17} className="shrink-0" />
             {!collapsed && <span className="flex-1">{label}</span>}
-            {!collapsed && <ChevronRight size={13} className="opacity-25" />}
+            {!collapsed && <ChevronRight size={13} className="opacity-35" />}
           </NavLink>
         ))}
       </nav>
 
-      {/* User footer */}
-      <div className="border-t border-cream-200 px-2 py-3 shrink-0">
+      <div className="shrink-0 border-t border-slate-200 px-2 py-3 dark:border-slate-800">
         {!collapsed && (
-          <div className="flex items-center gap-3 px-2 mb-2">
+          <div className="mb-2 flex items-center gap-3 px-2">
             <Avatar name={`${user?.firstName} ${user?.lastName}`} src={user?.avatarUrl} size="sm" />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-dark-900 truncate">
+              <p className="truncate text-xs font-semibold text-slate-900 dark:text-slate-100">
                 {user?.firstName} {user?.lastName}
               </p>
-              <p className="text-[10px] text-dark-400 truncate">{user?.email}</p>
+              <p className="truncate text-[10px] text-slate-400 dark:text-slate-500">{user?.email}</p>
             </div>
           </div>
         )}
@@ -78,7 +77,7 @@ function SidebarContent({ collapsed, onLogout }) {
           onClick={onLogout}
           title={collapsed ? 'Log Out' : undefined}
           className={cn(
-            'admin-nav-link w-full text-red-500 hover:bg-red-50 hover:text-red-600',
+            'admin-nav-link w-full text-red-500 hover:bg-red-50 hover:text-red-600 dark:text-red-300 dark:hover:bg-red-500/10 dark:hover:text-red-200',
             collapsed && 'justify-center px-2',
           )}
         >
@@ -92,9 +91,9 @@ function SidebarContent({ collapsed, onLogout }) {
 
 export default function AdminLayout() {
   const { logout } = useAuth()
-  const navigate   = useNavigate()
-  const [collapsed,   setCollapsed]   = useState(false)
-  const [mobileOpen,  setMobileOpen]  = useState(false)
+  const navigate = useNavigate()
+  const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   const handleLogout = async () => {
     await logout()
@@ -102,13 +101,11 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-cream-100 overflow-hidden">
-
-      {/* ── Desktop sidebar ───────────────────────────────────────── */}
+    <div className="app-shell flex h-screen overflow-hidden">
       <aside
         className={cn(
-          'hidden lg:block relative shrink-0 transition-all duration-300',
-          collapsed ? 'w-16' : 'w-60',
+          'relative hidden shrink-0 transition-all duration-300 lg:block',
+          collapsed ? 'w-16' : 'w-64',
         )}
       >
         <div className="h-full">
@@ -117,29 +114,21 @@ export default function AdminLayout() {
 
         <button
           onClick={() => setCollapsed(v => !v)}
-          className={cn(
-            'absolute top-16 -right-3 z-10',
-            'w-6 h-6 bg-white border border-cream-300 rounded-full',
-            'flex items-center justify-center shadow-sm',
-            'hover:bg-cream-50 transition-colors',
-          )}
+          className="absolute -right-3 top-16 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-brand-50 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          {collapsed
-            ? <ChevronRight size={11} className="text-dark-600" />
-            : <ChevronLeft  size={11} className="text-dark-600" />
-          }
+          {collapsed ? <ChevronRight size={11} /> : <ChevronLeft size={11} />}
         </button>
       </aside>
 
-      {/* ── Mobile sidebar overlay ────────────────────────────────── */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-50 lg:hidden flex"
+          className="fixed inset-0 z-50 flex lg:hidden"
           onClick={() => setMobileOpen(false)}
         >
-          <div className="absolute inset-0 bg-dark-900/50" />
+          <div className="absolute inset-0 bg-slate-950/50" />
           <div
-            className="relative w-60 animate-slide-left"
+            className="relative w-64 animate-slide-left"
             onClick={e => e.stopPropagation()}
           >
             <SidebarContent collapsed={false} onLogout={handleLogout} />
@@ -147,29 +136,36 @@ export default function AdminLayout() {
         </div>
       )}
 
-      {/* ── Main content ─────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile top bar */}
-        <header className="lg:hidden flex items-center gap-3 px-4 h-14 bg-white border-b border-cream-200 shrink-0">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/85 px-4 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/85 lg:px-6">
           <button
             onClick={() => setMobileOpen(true)}
-            className="p-2 rounded-xl hover:bg-cream-100 text-dark-700 transition-colors"
+            className="rounded-xl p-2 text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-700 dark:text-slate-200 dark:hover:bg-slate-800 lg:hidden"
+            aria-label="Open navigation"
           >
             <Menu size={20} />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-dark-900 rounded-lg flex items-center justify-center">
-              <Clapperboard size={14} className="text-brand-400" />
+          <div className="flex items-center gap-2 lg:hidden">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-accent-500 text-white">
+              <GraduationCap size={16} />
             </div>
-            <span className="font-display font-bold text-dark-900">
-              Cine<span className="text-brand-500">Lingo</span>
-              <span className="text-xs font-body font-medium text-dark-400 ml-1.5">Admin</span>
+            <span className="font-black text-slate-950 dark:text-white">
+              Cine<span className="text-brand-500 dark:text-brand-300">Lingo</span>
+              <span className="ml-1.5 text-xs font-semibold text-slate-400 dark:text-slate-500">Admin</span>
             </span>
+          </div>
+          <div className="hidden lg:block">
+            <p className="text-xs font-bold uppercase tracking-normal text-brand-600 dark:text-brand-300">Admin</p>
+            <h1 className="text-lg font-black tracking-normal text-slate-950 dark:text-white">Platform Control Center</h1>
+          </div>
+          <div className="ml-auto flex items-center gap-1.5">
+            <NotificationsDropdown />
+            <ThemeToggle />
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto thin-scroll">
-          <div className="p-6 max-w-screen-2xl mx-auto">
+        <main className="thin-scroll flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-screen-2xl p-6">
             <Outlet />
           </div>
         </main>

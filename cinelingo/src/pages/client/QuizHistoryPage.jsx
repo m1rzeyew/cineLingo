@@ -1,48 +1,94 @@
-import { useNavigate } from 'react-router-dom'
-import { RotateCcw, Trophy } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Clock3, History, Trophy } from 'lucide-react'
 import Badge from '../../components/ui/Badge'
-import Button from '../../components/ui/Button'
-import { scoreColor } from '../../utils/helpers'
-
-const MOCK_HISTORY = [
-  { id:'1', quizId:'1', unitTitle:'The Art of Conversation',   score:85, correctAnswers:17, totalQuestions:20, takenAt:'2024-03-10' },
-  { id:'2', quizId:'2', unitTitle:'City Life & Urban Stories', score:60, correctAnswers:12, totalQuestions:20, takenAt:'2024-03-08' },
-  { id:'3', quizId:'1', unitTitle:'Basics of Grammar',         score:95, correctAnswers:19, totalQuestions:20, takenAt:'2024-03-05' },
-  { id:'4', quizId:'1', unitTitle:'Music & Emotions',          score:40, correctAnswers:8,  totalQuestions:20, takenAt:'2024-03-01' },
-]
+import PageHeader, { EmptyState } from '../../components/ui/PageHeader'
+import { cn, formatDate, getApiErrorMessage, scoreColor } from '../../utils/helpers'
+import { quizService } from '../../services'
 
 export default function QuizHistoryPage() {
-  const navigate = useNavigate()
+  const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let active = true
+
+    const load = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await quizService.getMyAttempts()
+        if (active) setHistory(Array.isArray(res.data) ? res.data : [])
+      } catch (err) {
+        if (active) setError(getApiErrorMessage(err, 'Could not load quiz history.'))
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    load()
+    return () => { active = false }
+  }, [])
+
+  const average = history.length
+    ? Math.round(history.reduce((sum, item) => sum + Number(item.score ?? 0), 0) / history.length)
+    : 0
+
   return (
-    <div className="max-w-screen-lg mx-auto px-6 py-8 animate-fade-in">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold font-display text-dark-900 flex items-center gap-2">
-          <Trophy size={22} className="text-brand-500" /> Quiz History
-        </h1>
-        <p className="text-dark-600 text-sm mt-0.5">{MOCK_HISTORY.length} quiz attempts</p>
-      </div>
-      <div className="space-y-3">
-        {MOCK_HISTORY.map((q) => (
-          <div key={q.id} className="flex items-center gap-4 bg-white rounded-2xl border border-cream-200 px-5 py-4 hover:shadow-card-hover transition-all">
-            <div className={`text-2xl font-bold font-display shrink-0 w-14 text-center ${scoreColor(q.score)}`}>{q.score}%</div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-dark-900">{q.unitTitle}</p>
-              <div className="flex items-center gap-3 mt-1">
-                <span className="text-xs text-dark-600">{q.correctAnswers}/{q.totalQuestions} correct</span>
-                <Badge variant={q.score>=80?'success':q.score>=50?'warning':'danger'}>
-                  {q.score>=80?'Excellent':q.score>=50?'Good':'Needs Work'}
-                </Badge>
-              </div>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-xs text-dark-500">{q.takenAt}</p>
-              <Button size="xs" variant="ghost" onClick={() => navigate(`/quiz/${q.quizId}`)} className="mt-1.5">
-                <RotateCcw size={12} /> Retry
-              </Button>
-            </div>
+    <div className="mx-auto max-w-screen-lg px-5 py-8 sm:px-6">
+      <PageHeader
+        eyebrow="Progress"
+        title="Quiz History"
+        description="Review previous attempts, scores, and completion status across your learning sessions."
+        action={
+          <div className="rounded-2xl border border-cream-200 bg-white px-5 py-3 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-normal text-dark-400">Average</p>
+            <p className={cn('text-2xl font-black tracking-normal', scoreColor(average))}>{average}%</p>
           </div>
-        ))}
-      </div>
+        }
+      />
+
+      {loading && (
+        <div className="space-y-3">
+          {[1, 2, 3].map(item => <div key={item} className="skeleton h-24 w-full" />)}
+        </div>
+      )}
+
+      {!loading && error && <EmptyState icon={History} title="History unavailable" description={error} />}
+
+      {!loading && !error && history.length === 0 && (
+        <EmptyState icon={Trophy} title="No quiz attempts yet" description="Take a quiz after a unit and your results will show here." />
+      )}
+
+      {!loading && !error && history.length > 0 && (
+        <div className="overflow-hidden rounded-2xl border border-cream-200 bg-white shadow-card">
+          {history.map((q) => {
+            const score = q.score ?? 0
+            return (
+              <article
+                key={q.attemptId || q.id}
+                className="grid gap-4 border-b border-cream-100 px-5 py-5 last:border-b-0 sm:grid-cols-[auto_1fr_auto] sm:items-center"
+              >
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-cream-50">
+                  <span className={cn('text-xl font-black tracking-normal', scoreColor(score))}>{score}%</span>
+                </div>
+                <div className="min-w-0">
+                  <h2 className="truncate text-base font-black tracking-normal text-dark-900">{q.unitTitle || q.quizTitle || 'Quiz attempt'}</h2>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Badge variant={q.passed ? 'success' : 'danger'}>{q.passed ? 'Passed' : 'Needs Work'}</Badge>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-dark-500">
+                      <Clock3 size={13} /> {q.timeTakenSeconds ?? 0}s
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm font-semibold text-dark-500 sm:text-right">
+                  {q.attemptedAt ? formatDate(q.attemptedAt) : ''}
+                </p>
+              </article>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

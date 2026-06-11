@@ -1,42 +1,117 @@
-import { useState, useRef, useEffect } from 'react'
-import { MessageCircle, X, Send, Wifi, WifiOff } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { MessageCircle, Send, Wifi, X } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
+import { chatService } from '../../services'
+import { useChat } from '../../hooks/useChat'
 import Avatar from '../ui/Avatar'
-import { cn, formatRelative } from '../../utils/helpers'
+import { cn, formatRelative, getApiErrorMessage } from '../../utils/helpers'
 
-const MOCK_MESSAGES = [
-  { id:'1', userId:'2', userName:'Kamran A.', content:'Did you catch that idiom? 😄', sentAt: new Date(Date.now()-300000).toISOString() },
-  { id:'2', userId:'1', userName:'Alex Johnson', content:'Yes! "Beat around the bush" 🎯', sentAt: new Date(Date.now()-240000).toISOString() },
-  { id:'3', userId:'3', userName:'Nigar H.', content:'The vocabulary in this unit is so useful', sentAt: new Date(Date.now()-120000).toISOString() },
-  { id:'4', userId:'1', userName:'Alex Johnson', content:'Agreed, I saved 4 new words already', sentAt: new Date(Date.now()-60000).toISOString() },
-]
+const list = (value) => Array.isArray(value) ? value : []
 
-export default function ChatSidebar({ roomId, isOpen, onToggle }) {
+const normalizeConversation = (conversation) => ({
+  id: conversation.id,
+  otherUserId: conversation.otherUserId,
+  otherUserName: conversation.otherUserName || 'Learner',
+  otherUserAvatar: conversation.otherUserAvatar,
+  lastMessage: conversation.lastMessage,
+  lastMessageAt: conversation.lastMessageAt,
+})
+
+const normalizeMessage = (message) => ({
+  id: message.id,
+  senderId: message.senderId,
+  senderName: message.senderName,
+  content: message.content,
+  createdAt: message.createdAt,
+  isRead: message.isRead,
+})
+
+export default function ChatSidebar({ isOpen, onToggle }) {
   const { user } = useAuth()
-  const [messages, setMessages] = useState(MOCK_MESSAGES)
+  const { messages: liveMessages, connected, connecting, sendMessage } = useChat()
+  const [conversations, setConversations] = useState([])
+  const [selectedId, setSelectedId] = useState(null)
+  const [messages, setMessages] = useState([])
+  const [loading, setLoading] = useState(false)
   const [input, setInput] = useState('')
   const bottomRef = useRef(null)
+  const liveCountRef = useRef(0)
+
+  const selected = useMemo(
+    () => conversations.find(item => item.id === selectedId) || conversations[0] || null,
+    [conversations, selectedId],
+  )
 
   useEffect(() => {
-    if (isOpen) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (!isOpen) return
+    let active = true
+
+    const loadConversations = async () => {
+      setLoading(true)
+      try {
+        const res = await chatService.getConversations()
+        const next = list(res.data).map(normalizeConversation)
+        if (!active) return
+        setConversations(next)
+        setSelectedId(current => current ?? next[0]?.id ?? null)
+      } catch (err) {
+        if (active) toast.error(getApiErrorMessage(err, 'Could not load conversations.'))
+      } finally {
+        if (active) setLoading(false)
+      }
     }
+
+    loadConversations()
+    return () => { active = false }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen || !selected?.id) {
+      setMessages([])
+      return
+    }
+
+    let active = true
+    const loadMessages = async () => {
+      setLoading(true)
+      try {
+        const res = await chatService.getMessages(selected.id)
+        if (active) setMessages(list(res.data).map(normalizeMessage))
+      } catch (err) {
+        if (active) toast.error(getApiErrorMessage(err, 'Could not load messages.'))
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    loadMessages()
+    return () => { active = false }
+  }, [isOpen, selected?.id])
+
+  useEffect(() => {
+    if (!selected) return
+    const unreadLiveMessages = liveMessages.slice(liveCountRef.current)
+    liveCountRef.current = liveMessages.length
+    const next = unreadLiveMessages.filter(message =>
+      message.senderId === selected.otherUserId || message.senderId === user?.id,
+    )
+    if (next.length) {
+      setMessages(prev => [...prev, ...next.map(normalizeMessage)])
+    }
+  }, [liveMessages, selected, user?.id])
+
+  useEffect(() => {
+    if (isOpen) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isOpen])
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = input.trim()
-    if (!text) return
-    setMessages(prev => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        userId: user?.id ?? '1',
-        userName: `${user?.firstName} ${user?.lastName}`,
-        content: text,
-        sentAt: new Date().toISOString(),
-      },
-    ])
-    setInput('')
+    if (!text || !selected?.otherUserId) return
+    const ok = await sendMessage(selected.otherUserId, text)
+    if (ok) setInput('')
+    else toast.error('Could not send message.')
+    // TODO: persist sent messages when the backend exposes a Swagger-supported send-message endpoint.
   }
 
   const handleKey = (e) => {
@@ -48,73 +123,113 @@ export default function ChatSidebar({ roomId, isOpen, onToggle }) {
 
   return (
     <>
-      {/* ── Kiçik trigger düyməsi — aşağı sağ künc ── */}
       {!isOpen && (
         <button
+          type="button"
           onClick={onToggle}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl
-                     bg-dark-900 text-white shadow-dark
-                     hover:bg-dark-800 transition-all duration-200 hover:scale-105 active:scale-95"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-2xl bg-brand-500 px-4 py-3 text-white shadow-amber transition-all duration-200 hover:scale-105 hover:bg-brand-600 active:scale-95"
         >
-          <MessageCircle size={18} className="text-brand-400" />
-          <span className="text-sm font-medium">Chat</span>
-          <span className="w-2 h-2 bg-brand-500 rounded-full animate-pulse" />
+          <MessageCircle size={18} />
+          <span className="text-sm font-semibold">Chat</span>
+          <span className={cn('h-2 w-2 rounded-full', connected ? 'bg-brand-100' : 'bg-warning-300')} />
         </button>
       )}
 
-      {/* ── Böyük sağ panel — sürüşərək açılır ── */}
       <div
         className={cn(
-          'fixed top-0 right-0 h-full w-80 z-40 flex flex-col',
-          'bg-white border-l border-cream-200 shadow-2xl',
+          'fixed right-0 top-0 z-40 flex h-full w-80 flex-col',
+          'border-l border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900',
           'transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
           isOpen ? 'translate-x-0' : 'translate-x-full',
         )}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 bg-dark-900 shrink-0">
+        <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-brand-500 to-accent-600 px-4 py-4">
           <div className="flex items-center gap-2">
-            <MessageCircle size={16} className="text-brand-400" />
+            <MessageCircle size={16} className="text-white" />
             <span className="text-sm font-semibold text-white">Study Chat</span>
             <div className="flex items-center gap-1">
-              <Wifi size={11} className="text-green-400" />
-              <span className="text-[10px] text-green-400">live</span>
+              <Wifi size={11} className="text-brand-100" />
+              <span className="text-[10px] text-brand-100">{connecting ? 'connecting' : connected ? 'live' : 'offline'}</span>
             </div>
           </div>
           <button
+            type="button"
             onClick={onToggle}
-            className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+            className="rounded-lg p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            aria-label="Close chat"
           >
             <X size={16} />
           </button>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto chat-scroll px-4 py-4 space-y-3">
+        <div className="border-b border-slate-200 p-3 dark:border-slate-800">
+          {loading && conversations.length === 0 ? (
+            <p className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">Loading conversations...</p>
+          ) : conversations.length === 0 ? (
+            <p className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              No conversations yet. Start one from a learner profile.
+            </p>
+          ) : (
+            <div className="thin-scroll flex gap-2 overflow-x-auto">
+              {conversations.map((conversation) => (
+                <button
+                  key={conversation.id}
+                  type="button"
+                  onClick={() => setSelectedId(conversation.id)}
+                  className={cn(
+                    'flex min-w-44 items-center gap-2 rounded-xl border px-3 py-2 text-left transition-colors',
+                    selected?.id === conversation.id
+                      ? 'border-brand-300 bg-brand-50 text-brand-800 dark:border-brand-500 dark:bg-brand-500/10 dark:text-brand-200'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700',
+                  )}
+                >
+                  <Avatar name={conversation.otherUserName} src={conversation.otherUserAvatar} size="sm" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-bold">{conversation.otherUserName}</span>
+                    <span className="block truncate text-[10px] opacity-60">{conversation.lastMessage || 'No messages yet'}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="chat-scroll flex-1 space-y-3 overflow-y-auto px-4 py-4">
+          {!selected && !loading && (
+            <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+              Select a conversation to view messages.
+            </p>
+          )}
+          {selected && messages.length === 0 && !loading && (
+            <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+              No messages in this conversation yet.
+            </p>
+          )}
           {messages.map((msg) => {
-            const isMe = msg.userId === (user?.id ?? '1')
+            const isMe = msg.senderId === user?.id
+            const name = isMe ? 'You' : msg.senderName || selected?.otherUserName || 'Learner'
             return (
-              <div key={msg.id} className={cn('flex gap-2', isMe && 'flex-row-reverse')}>
-                <Avatar name={msg.userName} size="sm" />
-                <div className={cn('max-w-[75%]', isMe && 'items-end flex flex-col')}>
+              <div key={`${msg.id}-${msg.createdAt}`} className={cn('flex gap-2', isMe && 'flex-row-reverse')}>
+                <Avatar name={name} size="sm" />
+                <div className={cn('max-w-[75%]', isMe && 'flex flex-col items-end')}>
                   {!isMe && (
-                    <span className="text-xs font-medium text-dark-500 mb-0.5 ml-1">
-                      {msg.userName}
+                    <span className="mb-0.5 ml-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      {name}
                     </span>
                   )}
-                  <div
-                    className={cn(
-                      'px-3 py-2 rounded-2xl text-sm leading-relaxed',
-                      isMe
-                        ? 'bg-dark-900 text-white rounded-tr-sm'
-                        : 'bg-cream-100 text-dark-900 rounded-tl-sm',
-                    )}
-                  >
+                  <div className={cn(
+                    'rounded-2xl px-3 py-2 text-sm leading-relaxed',
+                    isMe
+                      ? 'rounded-tr-sm bg-brand-500 text-white'
+                      : 'rounded-tl-sm bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100',
+                  )}>
                     {msg.content}
                   </div>
-                  <span className="text-[10px] text-dark-400/60 mt-0.5 mx-1">
-                    {formatRelative(msg.sentAt)}
-                  </span>
+                  {msg.createdAt && (
+                    <span className="mx-1 mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">
+                      {formatRelative(msg.createdAt)}
+                    </span>
+                  )}
                 </div>
               </div>
             )
@@ -122,42 +237,42 @@ export default function ChatSidebar({ roomId, isOpen, onToggle }) {
           <div ref={bottomRef} />
         </div>
 
-        {/* Input */}
-        <div className="p-3 border-t border-cream-200 shrink-0">
-          <div className="flex items-end gap-2 bg-cream-100 rounded-2xl px-3 py-2">
+        <div className="shrink-0 border-t border-slate-200 p-3 dark:border-slate-800">
+          <div className="flex items-end gap-2 rounded-2xl bg-slate-100 px-3 py-2 dark:bg-slate-800">
             <textarea
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKey}
-              placeholder="Message your friends…"
+              placeholder={selected ? `Message ${selected.otherUserName}...` : 'Select a conversation...'}
               rows={1}
-              className="flex-1 bg-transparent text-sm text-dark-900 placeholder:text-dark-400/60
-                         resize-none focus:outline-none"
+              disabled={!selected}
+              className="flex-1 resize-none bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-100 dark:placeholder:text-slate-500"
               style={{ lineHeight: '1.5', maxHeight: '80px' }}
             />
             <button
+              type="button"
               onClick={handleSend}
-              disabled={!input.trim()}
+              disabled={!input.trim() || !selected}
               className={cn(
-                'p-2 rounded-xl transition-all shrink-0',
-                input.trim()
-                  ? 'bg-dark-900 text-white hover:bg-dark-800'
-                  : 'text-dark-300 cursor-not-allowed',
+                'shrink-0 rounded-xl p-2 transition-all',
+                input.trim() && selected
+                  ? 'bg-brand-500 text-white hover:bg-brand-600'
+                  : 'cursor-not-allowed text-slate-300 dark:text-slate-600',
               )}
+              aria-label="Send message"
             >
               <Send size={15} />
             </button>
           </div>
-          <p className="text-[10px] text-center text-dark-400/40 mt-1.5">
-            Enter to send · Shift+Enter for new line
+          <p className="mt-1.5 text-center text-[10px] text-slate-400 dark:text-slate-500">
+            Enter to send - Shift+Enter for new line
           </p>
         </div>
       </div>
 
-      {/* Overlay — panel açıq olanda arxasına basanda bağlanır */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-dark-900/20 z-30"
+          className="fixed inset-0 z-30 bg-slate-950/20"
           onClick={onToggle}
         />
       )}

@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import * as signalR from '@microsoft/signalr'
 
-const HUB_URL = import.meta.env.VITE_SIGNALR_HUB_URL || 'http://localhost:5000/hubs/chat'
+const HUB_URL = import.meta.env.VITE_SIGNALR_HUB_URL || 'http://localhost:5267/hubs/chat'
 
-export function useChat(roomId) {
-  const [messages,   setMessages]   = useState([])
-  const [connected,  setConnected]  = useState(false)
+export function useChat() {
+  const [messages, setMessages] = useState([])
+  const [connected, setConnected] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const connectionRef = useRef(null)
 
@@ -23,11 +23,12 @@ export function useChat(roomId) {
       .build()
 
     connection.on('ReceiveMessage', (msg) => {
-      setMessages((prev) => [...prev, msg])
-    })
-
-    connection.on('MessageHistory', (history) => {
-      setMessages(history)
+      setMessages((prev) => [...prev, {
+        id: msg.id ?? `${msg.senderId}-${msg.sentAt ?? Date.now()}`,
+        senderId: msg.senderId,
+        content: msg.message ?? msg.content,
+        createdAt: msg.sentAt ?? msg.createdAt ?? new Date().toISOString(),
+      }])
     })
 
     connection.onreconnecting(() => setConnected(false))
@@ -36,7 +37,6 @@ export function useChat(roomId) {
 
     try {
       await connection.start()
-      if (roomId) await connection.invoke('JoinRoom', roomId)
       connectionRef.current = connection
       setConnected(true)
     } catch (err) {
@@ -44,30 +44,32 @@ export function useChat(roomId) {
     } finally {
       setConnecting(false)
     }
-  }, [roomId])
+  }, [])
 
   const disconnect = useCallback(async () => {
     if (connectionRef.current) {
-      try { await connectionRef.current.stop() } catch { /* ignore */ }
+      try { await connectionRef.current.stop() } catch {}
       connectionRef.current = null
       setConnected(false)
       setMessages([])
     }
   }, [])
 
-  const sendMessage = useCallback(async (content) => {
-    if (!connectionRef.current || !connected) return
+  const sendMessage = useCallback(async (receiverId, content) => {
+    if (!connectionRef.current || !connected || !receiverId || !content?.trim()) return false
     try {
-      await connectionRef.current.invoke('SendMessage', { roomId, content })
+      await connectionRef.current.invoke('SendMessage', receiverId, content.trim())
+      return true
     } catch (err) {
       console.warn('Send failed:', err)
+      return false
     }
-  }, [connected, roomId])
+  }, [connected])
 
   useEffect(() => {
     connect()
     return () => { disconnect() }
-  }, [roomId]) // eslint-disable-line
+  }, [connect, disconnect])
 
   return { messages, connected, connecting, sendMessage }
 }

@@ -2,6 +2,23 @@ import { clsx } from 'clsx'
 
 export const cn = (...inputs) => clsx(inputs)
 
+export function getApiErrorMessage(error, fallback = 'Something went wrong.') {
+  const data = error?.response?.data ?? error
+
+  if (!data) return fallback
+  if (typeof data === 'string') return data
+  if (data.message) return data.message
+
+  if (data.errors && typeof data.errors === 'object') {
+    const messages = Object.values(data.errors).flat().filter(Boolean)
+    if (messages.length) return messages.join(' ')
+  }
+
+  if (data.title) return data.title
+
+  return fallback
+}
+
 export const formatDate = (date) =>
   new Date(date).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' })
 
@@ -21,20 +38,25 @@ export const formatRelative = (date) => {
 }
 
 export const truncate = (str, n = 80) =>
-  str?.length > n ? str.slice(0, n) + '…' : str
+  str?.length > n ? str.slice(0, n) + '...' : str
 
 export const getInitials = (name = '') =>
   name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
 
 export const scoreColor = (score) => {
-  if (score >= 80) return 'text-green-600'
+  if (score >= 80) return 'text-brand-600'
   if (score >= 50) return 'text-brand-500'
   return 'text-red-500'
 }
 
 export const levelLabel = (n) => {
-  const map = { 1:'Beginner', 2:'Elementary', 3:'Pre-Intermediate', 4:'Intermediate', 5:'Upper-Intermediate', 6:'Advanced' }
-  return map[n] || `Level ${n}`
+  const map = { 0:'Beginner', 1:'Intermediate', 2:'Advanced' }
+  if (typeof n === 'string') {
+    const numeric = Number(n)
+    if (n.trim() !== '' && Number.isInteger(numeric) && map[numeric]) return map[numeric]
+    return n
+  }
+  return map[n] || 'Not selected'
 }
 
 export const debounce = (fn, delay = 300) => {

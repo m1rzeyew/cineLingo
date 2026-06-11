@@ -1,69 +1,112 @@
-import { useState } from 'react'
-import { Search, BookMarked, Trash2 } from 'lucide-react'
-import Input  from '../../components/ui/Input'
-import Badge  from '../../components/ui/Badge'
-import { cn } from '../../utils/helpers'
+import { useEffect, useMemo, useState } from 'react'
+import toast from 'react-hot-toast'
+import { BookMarked, Search, Trash2 } from 'lucide-react'
+import Input from '../../components/ui/Input'
+import Badge from '../../components/ui/Badge'
+import PageHeader, { EmptyState } from '../../components/ui/PageHeader'
+import { vocabularyService } from '../../services'
+import { getApiErrorMessage } from '../../utils/helpers'
 
-const MOCK_WORDS = [
-  { id:'1', english:'eloquent',     phonetic:'/ˈel.ə.kwənt/', translation:'nitiqli, ifadəli',     partOfSpeech:'adj', exampleSentence:'She gave an eloquent speech at the conference.' },
-  { id:'2', english:'articulate',   phonetic:'/ɑːˈtɪk.jʊ.lət/', translation:'aydın danışmaq',   partOfSpeech:'verb', exampleSentence:'He could articulate his ideas very clearly.' },
-  { id:'3', english:'metropolitan', phonetic:'/ˌmet.rəˈpɒl.ɪ.tən/', translation:'böyük şəhər', partOfSpeech:'adj',  exampleSentence:'London is a metropolitan city.' },
-  { id:'4', english:'commute',      phonetic:'/kəˈmjuːt/', translation:'işə getmək',             partOfSpeech:'verb', exampleSentence:'She commutes to work by train every day.' },
-  { id:'5', english:'subtle',       phonetic:'/ˈsʌt.əl/', translation:'incə, nəzərə çarpmayan',  partOfSpeech:'adj',  exampleSentence:'There was a subtle difference between the two paintings.' },
-  { id:'6', english:'candid',       phonetic:'/ˈkæn.dɪd/', translation:'açıq, dürüst',           partOfSpeech:'adj',  exampleSentence:'Please be candid with me about your feelings.' },
-]
+const normalizeWord = (word) => ({
+  id: word.wordId ?? word.id,
+  english: word.term ?? word.english,
+  translation: word.definition ?? word.translation,
+  phonetic: word.pronunciation ?? word.phonetic,
+  imageUrl: word.imageUrl,
+  savedAt: word.savedAt,
+})
 
 export default function VocabularyPage() {
   const [search, setSearch] = useState('')
-  const [words, setWords]   = useState(MOCK_WORDS)
+  const [words, setWords] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const filtered = words.filter(w =>
-    search==='' ||
-    w.english.toLowerCase().includes(search.toLowerCase()) ||
-    w.translation.toLowerCase().includes(search.toLowerCase())
-  )
+  useEffect(() => {
+    let active = true
+
+    const load = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = search.trim()
+          ? await vocabularyService.search(search.trim())
+          : await vocabularyService.getSaved()
+        if (active) setWords((Array.isArray(res.data) ? res.data : []).map(normalizeWord))
+      } catch (err) {
+        if (active) setError(getApiErrorMessage(err, 'Could not load vocabulary.'))
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    const timer = setTimeout(load, search.trim() ? 250 : 0)
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
+  }, [search])
+
+  const filtered = useMemo(() => words.filter(w =>
+    search === '' ||
+    w.english?.toLowerCase().includes(search.toLowerCase()) ||
+    w.translation?.toLowerCase().includes(search.toLowerCase())
+  ), [search, words])
+
+  const removeWord = async (wordId) => {
+    try {
+      await vocabularyService.deleteWord(wordId)
+      setWords(w => w.filter(x => x.id !== wordId))
+      toast.success('Word removed.')
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Could not remove word.'))
+    }
+  }
 
   return (
-    <div className="max-w-screen-lg mx-auto px-6 py-8 animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold font-display text-dark-900 flex items-center gap-2">
-            <BookMarked size={22} className="text-brand-500" /> My Vocabulary
-          </h1>
-          <p className="text-dark-600 text-sm mt-0.5">{filtered.length} words saved</p>
-        </div>
-        <div className="w-56">
-          <Input placeholder="Search words…" prefix={<Search size={14} />}
-            value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-      </div>
+    <div className="mx-auto max-w-screen-xl px-4 py-6 sm:px-6 lg:py-8">
+      <PageHeader
+        eyebrow="Vocabulary"
+        title="Saved words"
+        description="Your personal word bank from units and video lessons. Search, review, and prune it as you learn."
+        action={
+          <div className="w-full md:w-72">
+            <Input placeholder="Search words..." prefix={<Search size={14} />} value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+        }
+      />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((word) => (
-          <div key={word.id}
-            className="group bg-white rounded-2xl border border-cream-200 p-5 hover:shadow-card-hover transition-all">
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div>
-                <p className="font-semibold text-dark-900">{word.english}</p>
-                {word.phonetic && <p className="text-xs text-brand-500 font-mono mt-0.5">{word.phonetic}</p>}
+      {loading && <p className="text-sm text-dark-500">Loading vocabulary...</p>}
+      {error && <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{getApiErrorMessage(error)}</p>}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {!loading && filtered.map((word) => (
+          <article key={word.id} className="group rounded-2xl border border-cream-200 bg-white p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-lg font-black tracking-normal text-dark-900">{word.english}</p>
+                {word.phonetic && <p className="mt-1 font-mono text-xs text-brand-600">{word.phonetic}</p>}
               </div>
-              <button onClick={() => setWords(w => w.filter(x => x.id !== word.id))}
-                className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition-all">
-                <Trash2 size={13} />
+              <button
+                onClick={() => removeWord(word.id)}
+                className="rounded-xl p-2 text-dark-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                aria-label={`Remove ${word.english}`}
+              >
+                <Trash2 size={15} />
               </button>
             </div>
-            <p className="text-sm text-dark-700 mb-2">{word.translation}</p>
-            {word.exampleSentence && (
-              <p className="text-xs text-dark-500 italic leading-relaxed border-l-2 border-cream-200 pl-2">
-                {word.exampleSentence}
-              </p>
-            )}
-            <div className="flex items-center gap-2 mt-3">
-              {word.partOfSpeech && <Badge>{word.partOfSpeech}</Badge>}
+            <p className="min-h-12 text-sm leading-6 text-dark-600">{word.translation}</p>
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <Badge>Saved</Badge>
+              <BookMarked size={16} className="text-dark-300" />
             </div>
-          </div>
+          </article>
         ))}
       </div>
+
+      {!loading && filtered.length === 0 && (
+        <EmptyState icon={BookMarked} title="No saved words found" description="Save words from unit pages and they will appear in this vocabulary bank." />
+      )}
     </div>
   )
 }

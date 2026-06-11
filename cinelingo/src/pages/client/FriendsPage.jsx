@@ -1,68 +1,143 @@
-import { useState } from 'react'
-import { useAuth } from '../../context/AuthContext'
+import { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
+import { UserMinus, Users } from 'lucide-react'
 import Avatar from '../../components/ui/Avatar'
-import Card   from '../../components/ui/Card'
-import { levelLabel } from '../../utils/helpers'
+import Button from '../../components/ui/Button'
+import Card from '../../components/ui/Card'
+import PageHeader from '../../components/ui/PageHeader'
+import { getApiErrorMessage, levelLabel } from '../../utils/helpers'
+import { followService } from '../../services'
 
-const MOCK_FOLLOWING = [
-  { id:'33', userName:'Kamran A.', englishLevel:4 },
-  { id:'22', userName:'Nigar H.',  englishLevel:3 },
-]
-const MOCK_FOLLOWERS = [
-  { id:'66', userName:'Farid M.',  englishLevel:4 },
-  { id:'55', userName:'Elena V.',  englishLevel:1 },
-  { id:'44', userName:'Omar H.',   englishLevel:2 },
-]
+const normalizeUser = (user) => ({
+  id: user.id || user.userId,
+  userName: user.userName || user.fullName || user.name || 'Learner',
+  englishLevel: user.englishLevel ?? user.level,
+  avatarUrl: user.avatarUrl,
+})
+
+function PersonRow({ user, action }) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-cream-200 bg-white px-4 py-3 shadow-sm">
+      <Avatar name={user.userName} src={user.avatarUrl} size="sm" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-bold text-dark-900">{user.userName}</p>
+        <p className="text-xs font-semibold text-dark-400">
+          {user.englishLevel != null && user.englishLevel !== '' ? levelLabel(user.englishLevel) : 'Level not selected'}
+        </p>
+      </div>
+      {action}
+    </div>
+  )
+}
 
 export default function FriendsPage() {
-  const [following, setFollowing] = useState(MOCK_FOLLOWING)
+  const [following, setFollowing] = useState([])
+  const [followers, setFollowers] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+
+    const load = async () => {
+      const [followingRes, followersRes] = await Promise.allSettled([
+        followService.getFollowing(),
+        followService.getFollowers(),
+      ])
+
+      if (!active) return
+      setFollowing((Array.isArray(followingRes.value?.data) ? followingRes.value.data : []).map(normalizeUser))
+      setFollowers((Array.isArray(followersRes.value?.data) ? followersRes.value.data : []).map(normalizeUser))
+      setLoading(false)
+    }
+
+    load()
+    return () => { active = false }
+  }, [])
+
+  const unfollow = async (id) => {
+    try {
+      await followService.unfollow(id)
+      setFollowing(f => f.filter(x => x.id !== id))
+      toast.success('Unfollowed.')
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Could not unfollow user.'))
+    }
+  }
 
   return (
-    <div className="max-w-screen-md mx-auto px-6 py-8 animate-fade-in space-y-5">
-      <h1 className="text-2xl font-bold font-display text-dark-900">Friends</h1>
+    <div className="mx-auto max-w-screen-lg px-5 py-8 sm:px-6">
+      <PageHeader
+        eyebrow="Social"
+        title="Friends"
+        description="Keep track of learners you follow and people following your CineLingo progress."
+        action={
+          <div className="rounded-2xl border border-cream-200 bg-white px-5 py-3 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-normal text-dark-400">Network</p>
+            <p className="text-2xl font-black tracking-normal text-dark-900">{following.length + followers.length}</p>
+          </div>
+        }
+      />
 
-      <Card>
-        <h2 className="font-semibold text-dark-900 mb-4 font-display text-lg">
-          Following ({following.length})
-        </h2>
-        <div className="space-y-2">
-          {following.length === 0 && (
-            <p className="text-dark-400 text-sm text-center py-4">Not following anyone yet</p>
-          )}
-          {following.map((u) => (
-            <div key={u.id} className="flex items-center gap-3 bg-cream-50 rounded-2xl px-4 py-3">
-              <Avatar name={u.userName} size="sm" />
-              <div className="flex-1">
-                <p className="font-medium text-dark-900 text-sm">{u.userName}</p>
-                <p className="text-xs text-dark-400">{levelLabel(u.englishLevel)}</p>
-              </div>
-              <button
-                onClick={() => setFollowing(f => f.filter(x => x.id !== u.id))}
-                className="text-xs text-dark-400 hover:text-red-500 px-3 py-1.5 rounded-xl hover:bg-red-50 transition-colors"
-              >
-                Unfollow
-              </button>
-            </div>
-          ))}
+      {loading && (
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="skeleton h-72" />
+          <div className="skeleton h-72" />
         </div>
-      </Card>
+      )}
 
-      <Card>
-        <h2 className="font-semibold text-dark-900 mb-4 font-display text-lg">
-          Followers ({MOCK_FOLLOWERS.length})
-        </h2>
-        <div className="space-y-2">
-          {MOCK_FOLLOWERS.map((u) => (
-            <div key={u.id} className="flex items-center gap-3 bg-cream-50 rounded-2xl px-4 py-3">
-              <Avatar name={u.userName} size="sm" />
-              <div className="flex-1">
-                <p className="font-medium text-dark-900 text-sm">{u.userName}</p>
-                <p className="text-xs text-dark-400">{levelLabel(u.englishLevel)}</p>
+      {!loading && (
+        <div className="grid gap-5 lg:grid-cols-2">
+          <Card padding="p-5" className="bg-cream-50/70">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-black tracking-normal text-dark-900">Following</h2>
+                <p className="text-sm text-dark-500">{following.length} learners</p>
               </div>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-dark-500">
+                <Users size={18} />
+              </span>
             </div>
-          ))}
+            <div className="space-y-3">
+              {following.length === 0 && (
+                <p className="rounded-2xl border border-dashed border-cream-300 bg-white px-4 py-8 text-center text-sm text-dark-500">
+                  Not following anyone yet.
+                </p>
+              )}
+              {following.map((u) => (
+                <PersonRow
+                  key={u.id}
+                  user={u}
+                  action={
+                    <Button variant="ghost" size="sm" onClick={() => unfollow(u.id)} aria-label={`Unfollow ${u.userName}`}>
+                      <UserMinus size={15} /> Unfollow
+                    </Button>
+                  }
+                />
+              ))}
+            </div>
+          </Card>
+
+          <Card padding="p-5" className="bg-cream-50/70">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-black tracking-normal text-dark-900">Followers</h2>
+                <p className="text-sm text-dark-500">{followers.length} learners</p>
+              </div>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-dark-500">
+                <Users size={18} />
+              </span>
+            </div>
+            <div className="space-y-3">
+              {followers.length === 0 && (
+                <p className="rounded-2xl border border-dashed border-cream-300 bg-white px-4 py-8 text-center text-sm text-dark-500">
+                  No followers yet.
+                </p>
+              )}
+              {followers.map((u) => <PersonRow key={u.id} user={u} />)}
+            </div>
+          </Card>
         </div>
-      </Card>
+      )}
     </div>
   )
 }

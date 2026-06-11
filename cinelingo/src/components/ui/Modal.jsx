@@ -12,7 +12,7 @@ const sizes = {
 export default function Modal({ open, onClose, title, children, size = 'md', className }) {
   useEffect(() => {
     if (open) document.body.style.overflow = 'hidden'
-    else       document.body.style.overflow = ''
+    else document.body.style.overflow = ''
     return () => { document.body.style.overflow = '' }
   }, [open])
 
@@ -22,34 +22,35 @@ export default function Modal({ open, onClose, title, children, size = 'md', cla
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={(e) => e.target === e.currentTarget && onClose?.()}
+      role="presentation"
     >
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-dark-900/60 backdrop-blur-sm animate-fade-in" />
+      <div className="absolute inset-0 animate-fade-in bg-slate-950/60 backdrop-blur-md dark:bg-slate-950/75" />
 
-      {/* Panel */}
       <div
         className={cn(
-          'relative w-full bg-white rounded-3xl shadow-2xl animate-slide-up',
-          'max-h-[90vh] overflow-y-auto',
+          'relative max-h-[90vh] w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-dark animate-slide-up',
+          'dark:border-slate-700 dark:bg-slate-800',
           sizes[size],
           className,
         )}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title || 'Dialog'}
       >
-        {/* Header */}
         {(title || onClose) && (
-          <div className="flex items-center justify-between px-6 py-5 border-b border-cream-200">
-            {title && <h2 className="text-lg font-semibold text-dark-900 font-display">{title}</h2>}
+          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-700">
+            {title && <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{title}</h2>}
             {onClose && (
               <button
                 onClick={onClose}
-                className="p-2 rounded-xl hover:bg-cream-100 text-dark-600 hover:text-dark-900 transition-colors"
+                className="rounded-xl p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:bg-slate-700 dark:hover:text-white"
+                aria-label="Close dialog"
               >
                 <X size={18} />
               </button>
             )}
           </div>
         )}
-        {/* Body */}
         <div className="px-6 py-5">{children}</div>
       </div>
     </div>
