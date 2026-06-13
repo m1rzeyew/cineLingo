@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Bot, Edit2, Plus, Search, Trash2 } from 'lucide-react'
+import { Bot, Edit2, Plus, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import Table from '../../components/ui/Table'
-import { levelQuizService, quizService } from '../../services'
+import { quizService, unitService } from '../../services'
 import { getApiErrorMessage } from '../../utils/helpers'
 
 const blankQuestion = () => ({ questionText: '', optionA: '', optionB: '', optionC: '', optionD: '', correctOption: 'A' })
@@ -23,6 +23,7 @@ const normalize = (quiz) => ({
 
 export default function AdminQuizzesPage() {
   const [unitId, setUnitId] = useState('')
+  const [units, setUnits] = useState([])
   const [quizzes, setQuizzes] = useState([])
   const [form, setForm] = useState(EMPTY)
   const [target, setTarget] = useState(null)
@@ -42,6 +43,24 @@ export default function AdminQuizzesPage() {
   }
 
   useEffect(() => { load() }, [unitId])
+
+  useEffect(() => {
+    let active = true
+    const loadUnits = async () => {
+      try {
+        const res = await unitService.getAll()
+        if (!active) return
+        setUnits((Array.isArray(res.data) ? res.data : []).map(item => ({
+          id: item.id ?? item.Id,
+          title: item.title ?? item.Title,
+        })))
+      } catch {
+        if (active) setUnits([])
+      }
+    }
+    loadUnits()
+    return () => { active = false }
+  }, [])
 
   const set = key => e => setForm(prev => ({ ...prev, [key]: e.target.value }))
   const setQuestion = (index, key, value) => setForm(prev => ({
@@ -102,15 +121,6 @@ export default function AdminQuizzesPage() {
     }
   }
 
-  const generatePlacement = async () => {
-    try {
-      await levelQuizService.generate()
-      toast.success('Placement quiz generated.')
-    } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Could not generate placement quiz.'))
-    }
-  }
-
   const columns = [
     { key: 'title', label: 'Title', render: v => <span className="font-semibold text-dark-900">{v || '-'}</span> },
     { key: 'unitId', label: 'Unit', render: v => <span className="text-sm">#{v}</span> },
@@ -132,9 +142,17 @@ export default function AdminQuizzesPage() {
           <p className="mt-0.5 text-sm text-dark-600">{quizzes.length} quizzes</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Input placeholder="Unit ID" type="number" min="1" prefix={<Search size={14} />} value={unitId} onChange={e => setUnitId(e.target.value)} />
+          <select
+            value={unitId}
+            onChange={e => setUnitId(e.target.value)}
+            className="min-w-56 rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-dark-800 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+          >
+            <option value="">Select Unit</option>
+            {units.map(unit => (
+              <option key={unit.id} value={unit.id}>{unit.title || `Unit #${unit.id}`}</option>
+            ))}
+          </select>
           <Button variant="secondary" onClick={generateUnitQuiz} disabled={!unitId}><Bot size={16} /> Generate Unit Quiz</Button>
-          <Button variant="secondary" onClick={generatePlacement}><Bot size={16} /> Generate Placement</Button>
           <Button onClick={() => openForm()}><Plus size={16} /> Create Quiz</Button>
         </div>
       </div>
@@ -143,7 +161,22 @@ export default function AdminQuizzesPage() {
 
       <Modal open={modal === 'form'} onClose={() => setModal(null)} title={target ? 'Edit Quiz' : 'Create Quiz'} size="xl">
         <form onSubmit={submit} className="space-y-4">
-          {!target && <Input label="Unit ID" type="number" min="1" value={form.unitId} onChange={set('unitId')} required />}
+          {!target && (
+            <div>
+              <label className="field-label mb-1.5 block">Unit</label>
+              <select
+                value={form.unitId}
+                onChange={set('unitId')}
+                className="w-full rounded-xl border border-cream-300 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/40"
+                required
+              >
+                <option value="">Select Unit</option>
+                {units.map(unit => (
+                  <option key={unit.id} value={unit.id}>{unit.title || `Unit #${unit.id}`}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <Input label="Title" value={form.title} onChange={set('title')} required />
           <Input label="Passing Score" type="number" min="1" max="100" value={form.passingScore} onChange={set('passingScore')} required />
           <div className="space-y-4">

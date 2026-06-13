@@ -4,6 +4,7 @@ const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5267').
 const TOKEN_KEY = 'cinelingo_token'
 const REFRESH_KEY = 'cinelingo_refresh_token'
 const USER_KEY = 'cinelingo_user'
+const NAME_ID_CLAIM = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'
 
 let refreshPromise = null
 
@@ -17,6 +18,30 @@ const clearAuth = () => {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(REFRESH_KEY)
   localStorage.removeItem(USER_KEY)
+}
+
+const getStoredUserId = () => {
+  try {
+    const raw = localStorage.getItem(USER_KEY)
+    if (!raw) return ''
+    const parsed = JSON.parse(raw)
+    const token = localStorage.getItem(TOKEN_KEY)
+    const claimId = (() => {
+      try {
+        const payload = token?.split('.')?.[1]
+        if (!payload) return ''
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
+        const json = atob(normalized).split('').map(char => `%${(`00${char.charCodeAt(0).toString(16)}`).slice(-2)}`).join('')
+        const claims = JSON.parse(decodeURIComponent(json))
+        return claims.sub || claims.nameid || claims[NAME_ID_CLAIM] || ''
+      } catch {
+        return ''
+      }
+    })()
+    return parsed?.id || parsed?.Id || claimId || ''
+  } catch {
+    return ''
+  }
 }
 
 const refreshAccessToken = async () => {
@@ -41,8 +66,12 @@ const refreshAccessToken = async () => {
 
 api.interceptors.request.use(
   (config) => {
+    config.headers = config.headers || {}
     const token = localStorage.getItem(TOKEN_KEY)
     if (token) config.headers.Authorization = `Bearer ${token}`
+    config.headers['Accept-Language'] = localStorage.getItem('i18nextLng') || localStorage.getItem('cinelingo_language') || 'en'
+    const userId = getStoredUserId()
+    if (userId) config.headers['X-User-Id'] = userId
     return config
   },
   (error) => Promise.reject(error)

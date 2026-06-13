@@ -25,8 +25,11 @@ import FriendsPage from './pages/client/FriendsPage'
 
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
+import AdminUserDetailPage from './pages/admin/AdminUserDetailPage'
 import AdminUnitsPage from './pages/admin/AdminUnitsPage'
+import AdminUnitDetailPage from './pages/admin/AdminUnitDetailPage'
 import AdminVideosPage from './pages/admin/AdminVideosPage'
+import AdminVideoDetailPage from './pages/admin/AdminVideoDetailPage'
 import AdminWordsPage from './pages/admin/AdminWordsPage'
 import AdminQuizzesPage from './pages/admin/AdminQuizzesPage'
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage'
@@ -76,8 +79,11 @@ export default function App() {
       <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminLayout /></ProtectedRoute>}>
         <Route index element={<AdminDashboardPage />} />
         <Route path="users" element={<AdminUsersPage />} />
+        <Route path="users/:id" element={<AdminUserDetailPage />} />
         <Route path="units" element={<AdminUnitsPage />} />
+        <Route path="units/:id" element={<AdminUnitDetailPage />} />
         <Route path="videos" element={<AdminVideosPage />} />
+        <Route path="videos/:id" element={<AdminVideoDetailPage />} />
         <Route path="words" element={<AdminWordsPage />} />
         <Route path="quizzes" element={<AdminQuizzesPage />} />
         <Route path="analytics" element={<AdminAnalyticsPage />} />

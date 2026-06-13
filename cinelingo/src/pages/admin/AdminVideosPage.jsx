@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Edit2, Eye, EyeOff, Plus, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Badge from '../../components/ui/Badge'
@@ -6,7 +7,7 @@ import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import Table from '../../components/ui/Table'
-import { videoService } from '../../services'
+import { unitService, videoService } from '../../services'
 import { getApiErrorMessage } from '../../utils/helpers'
 
 const EMPTY = { unitId: '', title: '', videoFile: null, subtitleFile: null }
@@ -21,7 +22,9 @@ const normalize = (video) => ({
 })
 
 export default function AdminVideosPage() {
+  const navigate = useNavigate()
   const [videos, setVideos] = useState([])
+  const [units, setUnits] = useState([])
   const [form, setForm] = useState(EMPTY)
   const [target, setTarget] = useState(null)
   const [modal, setModal] = useState(null)
@@ -32,8 +35,9 @@ export default function AdminVideosPage() {
   const load = async () => {
     setLoading(true)
     try {
-      const res = await videoService.getAll()
-      setVideos((Array.isArray(res.data) ? res.data : []).map(normalize))
+      const [videosRes, unitsRes] = await Promise.all([videoService.getAll(), unitService.getAll()])
+      setVideos((Array.isArray(videosRes.data) ? videosRes.data : []).map(normalize))
+      setUnits((Array.isArray(unitsRes.data) ? unitsRes.data : []).map(unit => ({ id: unit.id ?? unit.Id, title: unit.title ?? unit.Title })))
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Could not load videos.'))
     } finally {
@@ -47,6 +51,10 @@ export default function AdminVideosPage() {
     setTarget(video)
     setForm(video ? { unitId: video.unitId || '', title: video.title || '', videoFile: null, subtitleFile: null } : EMPTY)
     setModal('form')
+  }
+
+  const openDetail = (video) => {
+    if (video?.id) navigate(`/admin/videos/${video.id}`)
   }
 
   const submit = async (e) => {
@@ -85,7 +93,10 @@ export default function AdminVideosPage() {
 
   const columns = [
     { key: 'title', label: 'Title', render: v => <span className="font-semibold text-dark-900">{v || '-'}</span> },
-    { key: 'unitId', label: 'Unit', render: v => <span className="text-sm">#{v}</span> },
+    { key: 'unitId', label: 'Unit', render: v => {
+      const unit = units.find(item => String(item.id) === String(v))
+      return <span className="text-sm">{unit?.title || `#${v}`}</span>
+    } },
     { key: 'durationSeconds', label: 'Duration', render: v => <span className="text-sm">{v ? `${Math.round(v / 60)} min` : '-'}</span> },
     { key: 'isPublished', label: 'Status', render: v => <Badge variant={v ? 'success' : 'default'}>{v ? 'Published' : 'Draft'}</Badge> },
     { key: 'actions', label: '', width: '140px', render: (_, row) => (
@@ -107,11 +118,21 @@ export default function AdminVideosPage() {
         <Button onClick={() => openForm()}><Plus size={16} /> Add Video</Button>
       </div>
 
-      <Table columns={columns} data={videos} loading={loading} emptyMessage="No videos found." />
+      <Table columns={columns} data={videos} loading={loading} emptyMessage="No videos found." onRowClick={openDetail} />
 
       <Modal open={modal === 'form'} onClose={() => setModal(null)} title={target ? 'Edit Video' : 'Add Video'}>
         <form onSubmit={submit} className="space-y-4">
-          {!target && <Input label="Unit ID" type="number" min="1" value={form.unitId} onChange={set('unitId')} required />}
+          {!target && (
+            <div>
+              <label className="field-label mb-1.5 block">Unit</label>
+              <select value={form.unitId} onChange={set('unitId')} className="w-full rounded-xl border border-cream-300 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/40" required>
+                <option value="">Select a unit</option>
+                {units.map(unit => (
+                  <option key={unit.id} value={unit.id}>{unit.title || `Unit #${unit.id}`}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <Input label="Title" value={form.title} onChange={set('title')} required />
           <Input label="Video File" type="file" accept="video/*" onChange={set('videoFile')} required={!target} />
           <Input label="Subtitle File" type="file" accept=".srt,.vtt,.txt" onChange={set('subtitleFile')} />

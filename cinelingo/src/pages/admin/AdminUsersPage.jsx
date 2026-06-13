@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Ban, Eye, Search, Edit2, Trash2, Undo2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import Table from '../../components/ui/Table'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
@@ -22,6 +23,7 @@ const normalizeUser = (user) => ({
 })
 
 export default function AdminUsersPage() {
+  const navigate = useNavigate()
   const [users, setUsers] = useState([])
   const [search, setSearch] = useState('')
   const [editUser, setEditUser] = useState(null)
@@ -56,13 +58,8 @@ export default function AdminUsersPage() {
     setRole(user.role || 'User')
   }
 
-  const openDetail = async (user) => {
-    try {
-      const res = await adminService.getUserById(user.id)
-      setDetailUser(normalizeUser(res.data))
-    } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Could not load user detail.'))
-    }
+  const openDetail = (user) => {
+    if (user?.id) navigate(`/admin/users/${user.id}`)
   }
 
   const handleUpdateRole = async (e) => {
@@ -146,81 +143,7 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      {loading ? <p className="text-sm text-dark-500">Loading users...</p> : <Table columns={columns} data={filtered} emptyMessage="No users found." />}
-
-      <Modal open={!!editUser} onClose={() => setEditUser(null)} title="Change Role">
-        {editUser && (
-          <form onSubmit={handleUpdateRole} className="space-y-4">
-            <p className="text-sm text-dark-600">Update role for <strong>{editUser.fullName}</strong>.</p>
-            <div>
-              <label className="text-sm font-medium text-dark-800 block mb-1.5">Role</label>
-              <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full bg-white border border-cream-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/40">
-                <option value="User">User</option>
-                <option value="Admin">Admin</option>
-              </select>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <Button type="button" variant="secondary" fullWidth onClick={() => setEditUser(null)}>Cancel</Button>
-              <Button type="submit" fullWidth>Save Changes</Button>
-            </div>
-          </form>
-        )}
-      </Modal>
-
-      <Modal open={!!detailUser} onClose={() => setDetailUser(null)} title="User Detail" size="lg">
-        {detailUser && (
-          <div className="space-y-5">
-            <div className="flex items-center gap-4 rounded-2xl border border-cream-200 bg-cream-50 p-4">
-              <Avatar name={detailUser.fullName} src={detailUser.avatarUrl} size="md" />
-              <div className="min-w-0">
-                <h2 className="truncate text-lg font-black tracking-normal text-dark-900">{detailUser.fullName}</h2>
-                <p className="truncate text-sm text-dark-500">{detailUser.email}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Badge variant={detailUser.role === 'Admin' ? 'dark' : 'default'}>{detailUser.role || 'User'}</Badge>
-                  {detailUser.levelName && <Badge variant="brand">{detailUser.levelName}</Badge>}
-                  <Badge variant={detailUser.isDeleted ? 'danger' : 'success'}>{detailUser.isDeleted ? 'Deleted' : 'Active'}</Badge>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-cream-200 bg-white p-4">
-                <p className="text-xs font-bold uppercase tracking-normal text-dark-400">Username</p>
-                <p className="mt-1 text-sm font-semibold text-dark-800">{detailUser.userName || '-'}</p>
-              </div>
-              <div className="rounded-xl border border-cream-200 bg-white p-4">
-                <p className="text-xs font-bold uppercase tracking-normal text-dark-400">Joined</p>
-                <p className="mt-1 text-sm font-semibold text-dark-800">{detailUser.createdAt ? formatDate(detailUser.createdAt) : '-'}</p>
-              </div>
-              <div className="rounded-xl border border-cream-200 bg-white p-4">
-                <p className="text-xs font-bold uppercase tracking-normal text-dark-400">Last Login</p>
-                <p className="mt-1 text-sm font-semibold text-dark-800">{detailUser.lastLoginAt ? formatDate(detailUser.lastLoginAt) : '-'}</p>
-              </div>
-              <div className="rounded-xl border border-cream-200 bg-white p-4">
-                <p className="text-xs font-bold uppercase tracking-normal text-dark-400">User ID</p>
-                <p className="mt-1 break-all text-xs font-semibold text-dark-800">{detailUser.id}</p>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-cream-200 bg-white p-4">
-              <label className="field-label mb-1.5 block">Ban Reason</label>
-              <textarea value={banReason} onChange={e => setBanReason(e.target.value)} rows={3} className="w-full resize-none rounded-xl border border-cream-300 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/40" />
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button variant="danger" onClick={handleBan}><Ban size={15} /> Ban User</Button>
-                <Button variant="secondary" onClick={handleUnban}><Undo2 size={15} /> Unban User</Button>
-              </div>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete User" size="sm">
-        <p className="text-dark-700 mb-5 text-sm">Delete <strong>{deleteTarget?.fullName}</strong>? This cannot be undone.</p>
-        <div className="flex gap-3">
-          <Button variant="secondary" fullWidth onClick={() => setDeleteTarget(null)}>Cancel</Button>
-          <Button variant="danger" fullWidth onClick={handleDelete}>Delete</Button>
-        </div>
-      </Modal>
+      {loading ? <p className="text-sm text-dark-500">Loading users...</p> : <Table columns={columns} data={filtered} emptyMessage="No users found." onRowClick={openDetail} />}
     </div>
   )
 }

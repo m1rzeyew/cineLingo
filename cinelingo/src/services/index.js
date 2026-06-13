@@ -1,6 +1,16 @@
 import api from '../api/axiosConfig'
 
 const list = (value) => Array.isArray(value) ? value : []
+const getStoredUserId = () => {
+  try {
+    const raw = localStorage.getItem('cinelingo_user')
+    if (!raw) return ''
+    const parsed = JSON.parse(raw)
+    return parsed?.id || parsed?.Id || ''
+  } catch {
+    return ''
+  }
+}
 
 const toFormData = (data = {}) => {
   const formData = new FormData()
@@ -153,7 +163,11 @@ export const quizService = {
     })) : undefined,
   }),
   delete: (id) => api.delete(`/api/Quiz/${id}`),
-  generate: (unitId) => api.post(`/api/Quiz/generate/${unitId}`),
+  generate: (unitId) => {
+    const nextUnitId = unitId == null ? '' : String(unitId).trim()
+    if (!nextUnitId) return Promise.reject(new Error('Missing unitId'))
+    return api.post('/api/Quiz/generate', null, { params: { unitId: nextUnitId } })
+  },
 }
 
 export const flashcardService = {
@@ -217,13 +231,13 @@ export const streakService = {
 }
 
 export const levelQuizService = {
-  getQuestions: () => api.get('/api/LevelQuiz/questions'),
+  getQuestions: () => api.get('/api/LevelQuiz/questions', { headers: { 'X-User-Id': getStoredUserId() } }),
   submit: (answers) => api.post('/api/LevelQuiz/submit', {
     Answers: list(answers).map(answer => ({
       QuestionId: answer.questionId ?? answer.QuestionId,
       SelectedOption: answer.selectedOption ?? answer.SelectedOption,
     })),
-  }),
+  }, { headers: { 'X-User-Id': getStoredUserId() } }),
   generate: () => api.post('/api/LevelQuiz/generate'),
 }
 

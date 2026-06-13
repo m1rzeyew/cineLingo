@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Edit2, Eye, EyeOff, Plus, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Badge from '../../components/ui/Badge'
@@ -21,6 +22,7 @@ const normalize = (unit) => ({
 })
 
 export default function AdminUnitsPage() {
+  const navigate = useNavigate()
   const [units, setUnits] = useState([])
   const [form, setForm] = useState(EMPTY)
   const [target, setTarget] = useState(null)
@@ -91,6 +93,9 @@ export default function AdminUnitsPage() {
   }
 
   const filtered = level === '' ? units : units.filter(unit => String(unit.englishLevel) === level)
+  const openDetail = (unit) => {
+    if (unit?.id) navigate(`/admin/units/${unit.id}`)
+  }
   const columns = [
     { key: 'title', label: 'Title', render: v => <span className="font-semibold text-dark-900">{v || '-'}</span> },
     { key: 'englishLevel', label: 'Level', render: v => <Badge variant="brand">{levelLabel(v)}</Badge> },
@@ -122,7 +127,7 @@ export default function AdminUnitsPage() {
         </div>
       </div>
 
-      <Table columns={columns} data={filtered} loading={loading} emptyMessage="No units found." />
+      <Table columns={columns} data={filtered} loading={loading} emptyMessage="No units found." onRowClick={openDetail} />
 
       <Modal open={modal === 'form'} onClose={() => setModal(null)} title={target ? 'Edit Unit' : 'Create Unit'}>
         <form onSubmit={submit} className="space-y-4">
