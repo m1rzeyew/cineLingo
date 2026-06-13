@@ -2,10 +2,12 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Flame, User, Trophy, Users, LogOut } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useLanguage } from '../../context/LanguageContext'
 import Avatar from '../ui/Avatar'
 import { levelLabel } from '../../utils/helpers'
 
 export default function ProfileDropdown() {
+  const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -36,7 +38,7 @@ export default function ProfileDropdown() {
       >
         <Avatar name={`${user?.firstName} ${user?.lastName}`} src={user?.avatarUrl} size="sm" />
         <div className="hidden text-left sm:block">
-          <p className="text-xs font-bold leading-none text-slate-900 dark:text-slate-100">{user?.firstName || 'Learner'}</p>
+          <p className="text-xs font-bold leading-none text-slate-900 dark:text-slate-100">{user?.firstName || t('learner', 'Learner')}</p>
           <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">{levelLabel(user?.englishLevel)}</p>
         </div>
       </button>
@@ -56,9 +58,9 @@ export default function ProfileDropdown() {
 
             <div className="py-1">
               {[
-                ['profile', 'My Profile', User],
-                ['stats', 'My Stats', Trophy],
-                ['friends', 'Friends', Users],
+                ['profile', t('myProfile', 'My Profile'), User],
+                ['stats', t('myStats', 'My Stats'), Trophy],
+                ['friends', t('friends', 'Friends'), Users],
               ].map(([page, label, Icon]) => (
                 <button
                   key={page}
@@ -77,7 +79,7 @@ export default function ProfileDropdown() {
                 className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10"
               >
                 <LogOut size={15} />
-                Log Out
+                {t('logout', 'Log Out')}
               </button>
             </div>
           </div>

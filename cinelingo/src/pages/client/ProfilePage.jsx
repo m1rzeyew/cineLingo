@@ -5,26 +5,28 @@ import Badge from '../../components/ui/Badge'
 import Card from '../../components/ui/Card'
 import PageHeader from '../../components/ui/PageHeader'
 import { levelLabel } from '../../utils/helpers'
+import { useLanguage } from '../../context/LanguageContext'
 
 export default function ProfilePage() {
+  const { t } = useLanguage()
   const { user } = useAuth()
   const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.fullName || 'Learner'
 
   const rows = [
-    ['First name', user?.firstName],
-    ['Last name', user?.lastName],
-    ['Email', user?.email],
-    ['English level', levelLabel(user?.englishLevel)],
-    ['Member since', user?.createdAt ? new Date(user.createdAt).getFullYear() : '-'],
-    ['Subscription', user?.isPremium ? 'Premium' : 'Free'],
+    [t('firstName', 'First name'), user?.firstName],
+    [t('lastName', 'Last name'), user?.lastName],
+    [t('email', 'Email'), user?.email],
+    [t('englishLevel', 'English level'), levelLabel(user?.englishLevel)],
+    [t('memberSince', 'Member since'), user?.createdAt ? new Date(user.createdAt).getFullYear() : '-'],
+    [t('subscription', 'Subscription'), user?.isPremium ? t('premium', 'Premium') : t('free', 'Free')],
   ]
 
   return (
     <div className="mx-auto max-w-screen-lg px-4 py-6 sm:px-6 lg:py-8">
       <PageHeader
-        eyebrow="Account"
-        title="Profile"
-        description="Manage the identity and progress details attached to your learning account."
+        eyebrow={t('account', 'Account')}
+        title={t('profile', 'Profile')}
+        description={t('profile.description', 'Manage the identity and progress details attached to your learning account.')}
       />
 
       <Card className="mb-5 overflow-hidden p-0">
@@ -35,7 +37,7 @@ export default function ProfilePage() {
               <h1 className="text-2xl font-black tracking-normal text-white">{fullName}</h1>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <Badge variant="dark">{levelLabel(user?.englishLevel)}</Badge>
-                {user?.isPremium && <Badge variant="warning">Premium</Badge>}
+                {user?.isPremium && <Badge variant="warning">{t('premium', 'Premium')}</Badge>}
               </div>
             </div>
           </div>
@@ -44,7 +46,7 @@ export default function ProfilePage() {
 
       <div className="grid gap-5 lg:grid-cols-[1fr_0.8fr]">
         <Card>
-          <h2 className="mb-5 text-lg font-black tracking-normal text-dark-900">Personal information</h2>
+          <h2 className="mb-5 text-lg font-black tracking-normal text-dark-900">{t('personalInformation', 'Personal information')}</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             {rows.map(([label, val]) => (
               <div key={label} className="rounded-2xl border border-cream-200 bg-cream-50 p-4">
@@ -56,33 +58,33 @@ export default function ProfilePage() {
         </Card>
 
         <Card>
-          <h2 className="mb-5 text-lg font-black tracking-normal text-dark-900">Account signals</h2>
+          <h2 className="mb-5 text-lg font-black tracking-normal text-dark-900">{t('accountSignals', 'Account signals')}</h2>
           <div className="space-y-3">
             <div className="flex items-center gap-3 rounded-2xl bg-cream-50 p-4">
               <Mail size={18} className="text-brand-600" />
               <div className="min-w-0">
-                <p className="text-xs font-bold uppercase tracking-normal text-dark-400">Email</p>
+                <p className="text-xs font-bold uppercase tracking-normal text-dark-400">{t('email', 'Email')}</p>
                 <p className="truncate text-sm font-semibold text-dark-900">{user?.email || '-'}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-2xl bg-cream-50 p-4">
               <Flame size={18} className="text-brand-600" />
               <div>
-                <p className="text-xs font-bold uppercase tracking-normal text-dark-400">Streak</p>
-                <p className="text-sm font-semibold text-dark-900">{user?.streak ?? 0} days</p>
+                <p className="text-xs font-bold uppercase tracking-normal text-dark-400">{t('streak', 'Streak')}</p>
+                <p className="text-sm font-semibold text-dark-900">{user?.streak ?? 0} {t('days', 'days')}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-2xl bg-cream-50 p-4">
               <Shield size={18} className="text-brand-600" />
               <div>
-                <p className="text-xs font-bold uppercase tracking-normal text-dark-400">Plan</p>
-                <p className="text-sm font-semibold text-dark-900">{user?.isPremium ? 'Premium' : 'Free'}</p>
+                <p className="text-xs font-bold uppercase tracking-normal text-dark-400">{t('plan', 'Plan')}</p>
+                <p className="text-sm font-semibold text-dark-900">{user?.isPremium ? t('premium', 'Premium') : t('free', 'Free')}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-2xl bg-cream-50 p-4">
               <Calendar size={18} className="text-brand-600" />
               <div>
-                <p className="text-xs font-bold uppercase tracking-normal text-dark-400">Joined</p>
+                <p className="text-xs font-bold uppercase tracking-normal text-dark-400">{t('joined', 'Joined')}</p>
                 <p className="text-sm font-semibold text-dark-900">{user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}</p>
               </div>
             </div>

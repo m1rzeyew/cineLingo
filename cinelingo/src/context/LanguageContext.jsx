@@ -1,8 +1,9 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { translations } from '../i18n/translations'
 
 const LanguageContext = createContext(null)
 const STORAGE_KEY = 'cinelingo_language'
+const I18NEXT_STORAGE_KEY = 'i18nextLng'
 const COOKIE_KEY = 'cinelingo_language'
 const DEFAULT_LANGUAGE = 'en'
 
@@ -22,12 +23,20 @@ const writeCookie = (name, value) => {
 
 export function LanguageProvider({ children }) {
   const [language, setLanguageState] = useState(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    return stored || readCookie(COOKIE_KEY) || DEFAULT_LANGUAGE
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(I18NEXT_STORAGE_KEY)
+      return stored || readCookie(COOKIE_KEY) || DEFAULT_LANGUAGE
+    } catch {
+      return readCookie(COOKIE_KEY) || DEFAULT_LANGUAGE
+    }
   })
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, language)
+    try {
+      localStorage.setItem(STORAGE_KEY, language)
+      localStorage.setItem(I18NEXT_STORAGE_KEY, language)
+    } catch {
+    }
     writeCookie(COOKIE_KEY, language)
     document.documentElement.lang = language
   }, [language])
@@ -49,7 +58,7 @@ export function LanguageProvider({ children }) {
   const value = useMemo(() => ({
     language,
     setLanguage,
-    t: (key) => translations[language]?.[key] || translations[DEFAULT_LANGUAGE][key] || key,
+    t: (key, fallback = key) => translations[language]?.[key] || translations[DEFAULT_LANGUAGE][key] || fallback,
   }), [language])
 
   return (

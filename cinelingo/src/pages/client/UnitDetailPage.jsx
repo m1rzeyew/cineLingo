@@ -8,10 +8,12 @@ import Card from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/PageHeader'
 import { getApiErrorMessage, levelLabel } from '../../utils/helpers'
 import { quizService, unitService, videoService, wordService } from '../../services'
+import { useLanguage } from '../../context/LanguageContext'
 
 const secondsToMinutes = (seconds) => Math.max(1, Math.round((Number(seconds) || 0) / 60))
 
 export default function UnitDetailPage() {
+  const { t } = useLanguage()
   const { id } = useParams()
   const navigate = useNavigate()
   const ctx = useOutletContext()
@@ -41,7 +43,7 @@ export default function UnitDetailPage() {
         setUnit(unitRes.value.data)
         if (quizRes.status === 'fulfilled') setQuiz(quizRes.value.data)
       } catch (err) {
-        if (active) setError(getApiErrorMessage(err, 'Could not load this unit.'))
+        if (active) setError(getApiErrorMessage(err, t('unitDetail.loadError', 'Could not load this unit.')))
       } finally {
         if (active) setLoading(false)
       }
@@ -71,7 +73,7 @@ export default function UnitDetailPage() {
       const fallbackId = res.data?.id ?? res.data?.Id
       if (fallbackId) await videoService.markWatched(fallbackId)
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Could not load the video.'))
+      toast.error(getApiErrorMessage(err, t('unitDetail.videoLoadError', 'Could not load the video.')))
     } finally {
       setVideoLoading(false)
     }
@@ -80,9 +82,9 @@ export default function UnitDetailPage() {
   const handleSaveWord = async (wordId) => {
     try {
       await wordService.save(wordId)
-      toast.success('Word saved.')
+      toast.success(t('wordSaved', 'Word saved.'))
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Could not save word.'))
+      toast.error(getApiErrorMessage(err, t('unitDetail.saveWordError', 'Could not save word.')))
     }
   }
 
@@ -98,7 +100,7 @@ export default function UnitDetailPage() {
   if (error || !unit) {
     return (
       <div className="mx-auto max-w-screen-md px-5 py-8 sm:px-6">
-        <EmptyState icon={BookOpen} title="Unit unavailable" description={error || 'Unit not found.'} />
+        <EmptyState icon={BookOpen} title={t('unitUnavailable', 'Unit unavailable')} description={error || t('unitNotFound', 'Unit not found.')} />
       </div>
     )
   }
@@ -117,7 +119,7 @@ export default function UnitDetailPage() {
         onClick={() => navigate(-1)}
         className="mb-6 inline-flex items-center gap-1.5 rounded-xl px-2 py-1 text-sm font-semibold text-slate-600 transition-colors hover:bg-brand-50 hover:text-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
       >
-        <ChevronLeft size={16} /> Back to Units
+        <ChevronLeft size={16} /> {t('backToUnits', 'Back to Units')}
       </button>
 
       <section className="relative mb-6 overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-500 to-accent-600 shadow-amber dark:border-slate-700 dark:from-slate-800 dark:to-slate-950">
@@ -134,22 +136,22 @@ export default function UnitDetailPage() {
         <div className="absolute inset-x-0 bottom-0 p-5 sm:p-8 lg:p-10">
           <div className="mb-4 flex flex-wrap gap-2">
             <Badge variant="dark">{levelName}</Badge>
-            {unit.status && <Badge variant={unit.status === 'Published' ? 'success' : 'default'}>{unit.status}</Badge>}
+            {unit.status && <Badge variant={unit.status === 'Published' ? 'success' : 'default'}>{t(unit.status, unit.status)}</Badge>}
           </div>
           <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
             <div>
               <h1 className="max-w-3xl text-3xl font-black leading-tight tracking-normal text-white sm:text-5xl">{unit.title}</h1>
               <div className="mt-4 flex flex-wrap items-center gap-4 text-sm font-semibold text-white/70">
-                <span className="inline-flex items-center gap-1.5"><Clock size={15} /> {duration} min</span>
-                <span className="inline-flex items-center gap-1.5"><Volume2 size={15} /> {words.length} vocabulary words</span>
+                <span className="inline-flex items-center gap-1.5"><Clock size={15} /> {duration} {t('min', 'min')}</span>
+                <span className="inline-flex items-center gap-1.5"><Volume2 size={15} /> {words.length} {t('vocabularyWords', 'vocabulary words')}</span>
               </div>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
               <Button size="lg" variant={videoOpen ? 'secondary' : 'brand'} onClick={handleWatch}>
-                <Play size={17} /> {videoOpen ? 'Watching' : 'Watch Video'}
+                <Play size={17} /> {videoOpen ? t('watching', 'Watching') : t('watchVideo', 'Watch Video')}
               </Button>
               <Button size="lg" variant="secondary" disabled={!quiz?.id} onClick={() => { setChatOpen(true); navigate(`/quiz/${quiz.id}`, { state: { unitId: unit.id } }) }}>
-                <BookOpen size={17} /> Take Quiz
+                <BookOpen size={17} /> {t('takeQuiz', 'Take Quiz')}
               </Button>
             </div>
           </div>
@@ -162,7 +164,7 @@ export default function UnitDetailPage() {
             <div className="flex aspect-video items-center justify-center px-6 text-center text-white/60">
               <div>
                 <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-brand-400" />
-                <p className="text-sm font-semibold">Loading video...</p>
+                <p className="text-sm font-semibold">{t('loadingVideo', 'Loading video...')}</p>
               </div>
             </div>
           ) : videoUrl ? (
@@ -172,7 +174,7 @@ export default function UnitDetailPage() {
               poster={video?.thumbnailUrl || video?.ThumbnailUrl || unit.videoClip?.thumbnailUrl || unit.videoClip?.ThumbnailUrl}
             >
               <source src={videoUrl} />
-              Your browser does not support video playback.
+              {t('videoPlaybackUnsupported', 'Your browser does not support video playback.')}
             </video>
           ) : (
             <div className="flex aspect-video items-center justify-center px-6 text-center text-white/60">
@@ -190,24 +192,24 @@ export default function UnitDetailPage() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Card padding="p-6">
-          <h2 className="text-lg font-black tracking-normal text-dark-900">About this unit</h2>
-          <p className="mt-3 text-sm leading-7 text-dark-600">{unit.description || 'No description has been added yet.'}</p>
+          <h2 className="text-lg font-black tracking-normal text-dark-900">{t('aboutThisUnit', 'About this unit')}</h2>
+          <p className="mt-3 text-sm leading-7 text-dark-600">{unit.description || t('noDescriptionYet', 'No description has been added yet.')}</p>
         </Card>
 
         <Card padding="p-6" className="bg-cream-50/70">
-          <h2 className="text-lg font-black tracking-normal text-dark-900">Learning Focus</h2>
+          <h2 className="text-lg font-black tracking-normal text-dark-900">{t('learningFocus', 'Learning Focus')}</h2>
           <div className="mt-4 space-y-3 text-sm font-semibold text-dark-600">
             <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3">
-              <span>Difficulty</span>
+              <span>{t('difficulty', 'Difficulty')}</span>
               <span className="text-dark-900">{levelName}</span>
             </div>
             <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3">
-              <span>Words</span>
+              <span>{t('words', 'Words')}</span>
               <span className="text-dark-900">{words.length}</span>
             </div>
             <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3">
-              <span>Quiz</span>
-              <span className="text-dark-900">{quiz?.id ? 'Available' : 'Not ready'}</span>
+              <span>{t('quiz', 'Quiz')}</span>
+              <span className="text-dark-900">{quiz?.id ? t('available', 'Available') : t('notReady', 'Not ready')}</span>
             </div>
           </div>
         </Card>
@@ -216,8 +218,8 @@ export default function UnitDetailPage() {
       <section className="mt-6 rounded-2xl border border-cream-200 bg-white p-6 shadow-card">
         <div className="mb-5 flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-lg font-black tracking-normal text-dark-900">Key Vocabulary</h2>
-            <p className="text-sm text-dark-500">Save useful words to your personal vocabulary list.</p>
+            <h2 className="text-lg font-black tracking-normal text-dark-900">{t('keyVocabulary', 'Key Vocabulary')}</h2>
+            <p className="text-sm text-dark-500">{t('unitDetail.vocabHint', 'Save useful words to your personal vocabulary list.')}</p>
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -232,17 +234,17 @@ export default function UnitDetailPage() {
                   type="button"
                   onClick={() => handleSaveWord(word.id)}
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-dark-400 transition-colors hover:bg-brand-100 hover:text-brand-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-                  aria-label={`Save ${word.term}`}
-                >
-                  <BookmarkPlus size={16} />
-                </button>
-              </div>
-              <p className="mt-3 text-xs leading-5 text-dark-600">{word.definition}</p>
-            </article>
-          ))}
-          {words.length === 0 && (
+                aria-label={t('saveWord', 'Save {{name}}').replace('{{name}}', word.term)}
+              >
+                <BookmarkPlus size={16} />
+              </button>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-dark-600">{word.definition}</p>
+          </article>
+        ))}
+        {words.length === 0 && (
             <p className="col-span-full rounded-2xl border border-dashed border-cream-300 bg-cream-50 px-4 py-8 text-center text-sm text-dark-500">
-              No vocabulary has been added to this unit yet.
+              {t('unitDetail.noVocabYet', 'No vocabulary has been added to this unit yet.')}
             </p>
           )}
         </div>

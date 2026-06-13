@@ -8,7 +8,7 @@ export default function LanguageSelector({ className, tone = 'light' }) {
   const darkOnHero = tone === 'hero'
 
   return (
-    <label className={cn('relative inline-flex h-10 items-center', className)} aria-label={t('language.label')}>
+    <label className={cn('relative inline-flex h-10 items-center', className)} aria-label={t('language.label', 'Language')}>
       <Languages size={15} className={cn('pointer-events-none absolute left-3 z-10', darkOnHero ? 'text-white/80' : 'text-brand-600 dark:text-brand-300')} />
       <select
         value={language}

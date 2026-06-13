@@ -1,3 +1,4 @@
+import React from 'react'
 import { Component } from 'react'
 import { Clapperboard } from 'lucide-react'
 import Button from './ui/Button'

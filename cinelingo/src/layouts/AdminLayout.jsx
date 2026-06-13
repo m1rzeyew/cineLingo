@@ -8,7 +8,9 @@ import { useAuth } from '../context/AuthContext'
 import Avatar from '../components/ui/Avatar'
 import ThemeToggle from '../components/common/ThemeToggle'
 import NotificationsDropdown from '../components/common/NotificationsDropdown'
+import LanguageSelector from '../components/common/LanguageSelector'
 import { cn } from '../utils/helpers'
+import { useLanguage } from '../context/LanguageContext'
 
 const LINKS = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -23,6 +25,7 @@ const LINKS = [
 
 function SidebarContent({ collapsed, onLogout }) {
   const { user } = useAuth()
+  const { t } = useLanguage()
 
   return (
     <div className="flex h-full flex-col border-r border-slate-200 bg-white shadow-card dark:border-slate-800 dark:bg-slate-900">
@@ -38,7 +41,7 @@ function SidebarContent({ collapsed, onLogout }) {
             <p className="text-base font-black leading-none text-slate-950 dark:text-white">
               Cine<span className="text-brand-500 dark:text-brand-300">Lingo</span>
             </p>
-            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-normal text-slate-400 dark:text-slate-500">Admin</p>
+            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-normal text-slate-400 dark:text-slate-500">{t('admin.label', 'Admin')}</p>
           </div>
         )}
       </div>
@@ -55,7 +58,7 @@ function SidebarContent({ collapsed, onLogout }) {
             }
           >
             <Icon size={17} className="shrink-0" />
-            {!collapsed && <span className="flex-1">{label}</span>}
+            {!collapsed && <span className="flex-1">{t(label.toLowerCase(), label)}</span>}
             {!collapsed && <ChevronRight size={13} className="opacity-35" />}
           </NavLink>
         ))}
@@ -75,14 +78,14 @@ function SidebarContent({ collapsed, onLogout }) {
         )}
         <button
           onClick={onLogout}
-          title={collapsed ? 'Log Out' : undefined}
+          title={collapsed ? t('logout', 'Log Out') : undefined}
           className={cn(
             'admin-nav-link w-full text-red-500 hover:bg-red-50 hover:text-red-600 dark:text-red-300 dark:hover:bg-red-500/10 dark:hover:text-red-200',
             collapsed && 'justify-center px-2',
           )}
         >
           <LogOut size={16} className="shrink-0" />
-          {!collapsed && <span>Log Out</span>}
+          {!collapsed && <span>{t('logout', 'Log Out')}</span>}
         </button>
       </div>
     </div>
@@ -92,6 +95,7 @@ function SidebarContent({ collapsed, onLogout }) {
 export default function AdminLayout() {
   const { logout } = useAuth()
   const navigate = useNavigate()
+  const { t } = useLanguage()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -137,7 +141,7 @@ export default function AdminLayout() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/85 px-4 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/85 lg:px-6">
+        <header className="relative z-50 flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/85 px-4 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/85 lg:px-6">
           <button
             onClick={() => setMobileOpen(true)}
             className="rounded-xl p-2 text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-700 dark:text-slate-200 dark:hover:bg-slate-800 lg:hidden"
@@ -151,14 +155,15 @@ export default function AdminLayout() {
             </div>
             <span className="font-black text-slate-950 dark:text-white">
               Cine<span className="text-brand-500 dark:text-brand-300">Lingo</span>
-              <span className="ml-1.5 text-xs font-semibold text-slate-400 dark:text-slate-500">Admin</span>
+              <span className="ml-1.5 text-xs font-semibold text-slate-400 dark:text-slate-500">{t('admin.label', 'Admin')}</span>
             </span>
           </div>
           <div className="hidden lg:block">
-            <p className="text-xs font-bold uppercase tracking-normal text-brand-600 dark:text-brand-300">Admin</p>
-            <h1 className="text-lg font-black tracking-normal text-slate-950 dark:text-white">Platform Control Center</h1>
+            <p className="text-xs font-bold uppercase tracking-normal text-brand-600 dark:text-brand-300">{t('admin.label', 'Admin')}</p>
+            <h1 className="text-lg font-black tracking-normal text-slate-950 dark:text-white">{t('admin.controlCenter', 'Platform Control Center')}</h1>
           </div>
           <div className="ml-auto flex items-center gap-1.5">
+            <LanguageSelector />
             <NotificationsDropdown />
             <ThemeToggle />
           </div>

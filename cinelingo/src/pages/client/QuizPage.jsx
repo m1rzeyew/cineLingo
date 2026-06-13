@@ -5,6 +5,7 @@ import Button from '../../components/ui/Button'
 import { EmptyState } from '../../components/ui/PageHeader'
 import { cn, getApiErrorMessage } from '../../utils/helpers'
 import { quizService } from '../../services'
+import { useLanguage } from '../../context/LanguageContext'
 
 const optionList = (question) => [
   { id: 'A', text: question.optionA },
@@ -14,6 +15,7 @@ const optionList = (question) => [
 ].filter(opt => opt.text)
 
 export default function QuizPage() {
+  const { t } = useLanguage()
   const { quizId } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
@@ -41,7 +43,7 @@ export default function QuizPage() {
           : await quizService.getById(quizId)
         if (active) setQuiz(res.data)
       } catch (err) {
-        if (active) setError(getApiErrorMessage(err, 'Could not load quiz.'))
+        if (active) setError(getApiErrorMessage(err, t('quiz.loadError', 'Could not load quiz.')))
       } finally {
         if (active) setLoading(false)
       }
@@ -77,7 +79,7 @@ export default function QuizPage() {
       const res = await quizService.submit(payload)
       setResult(res.data)
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Could not submit quiz.'))
+      setError(getApiErrorMessage(err, t('quiz.submitError', 'Could not submit quiz.')))
     } finally {
       setSubmitting(false)
     }
@@ -105,7 +107,7 @@ export default function QuizPage() {
   if (error || !q) {
     return (
       <div className="mx-auto max-w-screen-md px-5 py-8 sm:px-6">
-        <EmptyState icon={XCircle} title="Quiz unavailable" description={error || 'Quiz not found.'} />
+        <EmptyState icon={XCircle} title={t('quiz.unavailableTitle', 'Quiz unavailable')} description={error || t('quiz.notFound', 'Quiz not found.')} />
       </div>
     )
   }
@@ -119,17 +121,17 @@ export default function QuizPage() {
         <div className={cn('mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl', result.passed ? 'bg-brand-100 text-brand-600' : 'bg-red-100 text-red-600')}>
           {result.passed ? <CheckCircle size={38} /> : <XCircle size={38} />}
         </div>
-        <p className="text-xs font-bold uppercase tracking-normal text-brand-600">Quiz Result</p>
+        <p className="text-xs font-bold uppercase tracking-normal text-brand-600">{t('quizResult', 'Quiz Result')}</p>
         <h1 className="mt-2 text-3xl font-black tracking-normal text-dark-900">
-          {score >= 80 ? 'Excellent work' : score >= 60 ? 'Solid progress' : 'Keep practicing'}
+          {score >= 80 ? t('quiz.excellentWork', 'Excellent work') : score >= 60 ? t('quiz.solidProgress', 'Solid progress') : t('quiz.keepPracticing', 'Keep practicing')}
         </h1>
         <div className="mx-auto my-7 max-w-xs rounded-2xl border border-cream-200 bg-white p-6 shadow-card">
           <p className="text-6xl font-black tracking-normal text-brand-600">{score}%</p>
-          <p className="mt-2 text-sm text-dark-500">{correct} correct out of {totalCount} questions</p>
+          <p className="mt-2 text-sm text-dark-500">{correct} {t('correctOutOf', 'correct out of')} {totalCount} {t('questions', 'questions')}</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Button variant="secondary" onClick={() => navigate(-1)}>Back to Unit</Button>
-          <Button onClick={reset}>Retry Quiz</Button>
+          <Button variant="secondary" onClick={() => navigate(-1)}>{t('backToUnit', 'Back to Unit')}</Button>
+          <Button onClick={reset}>{t('retryQuiz', 'Retry Quiz')}</Button>
         </div>
       </div>
     )
@@ -143,10 +145,10 @@ export default function QuizPage() {
           onClick={() => navigate(-1)}
           className="inline-flex items-center gap-1.5 rounded-xl px-2 py-1 text-sm font-semibold text-dark-600 transition-colors hover:bg-dark-900/5 hover:text-dark-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
         >
-          <ChevronLeft size={16} /> Exit Quiz
+          <ChevronLeft size={16} /> {t('exitQuiz', 'Exit Quiz')}
         </button>
         <span className="rounded-full border border-cream-200 bg-white px-3 py-1 text-xs font-bold text-dark-600">
-          {answeredCount} / {total} answered
+          {answeredCount} / {total} {t('answered', 'answered')}
         </span>
       </div>
 
@@ -155,7 +157,7 @@ export default function QuizPage() {
       </div>
 
       <section className="mb-6 rounded-2xl border border-cream-200 bg-white p-6 shadow-card sm:p-8">
-        <p className="mb-3 text-xs font-bold uppercase tracking-normal text-brand-600">Question {current + 1}</p>
+        <p className="mb-3 text-xs font-bold uppercase tracking-normal text-brand-600">{t('question', 'Question')} {current + 1}</p>
         <h1 className="text-2xl font-black leading-tight tracking-normal text-dark-900">{q.questionText}</h1>
       </section>
 
@@ -189,15 +191,15 @@ export default function QuizPage() {
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button variant="secondary" onClick={() => setCurrent(c => Math.max(0, c - 1))} disabled={current === 0}>
-          <ChevronLeft size={16} /> Previous
+          <ChevronLeft size={16} /> {t('previous', 'Previous')}
         </Button>
         {current < total - 1 ? (
           <Button className="sm:flex-1" onClick={() => setCurrent(c => c + 1)} disabled={!answers[q.id]}>
-            Next <ChevronRight size={16} />
+            {t('next', 'Next')} <ChevronRight size={16} />
           </Button>
         ) : (
           <Button className="sm:flex-1" variant="brand" loading={submitting} disabled={answeredCount < total} onClick={handleSubmit}>
-            Submit Quiz
+            {t('submitQuiz', 'Submit Quiz')}
           </Button>
         )}
       </div>

@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { Bell, Send, Users, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { adminService } from '../../services'
-import { getApiErrorMessage } from '../../utils/helpers'
+import { showApiErrorOnce } from '../../utils/helpers'
+import { useLanguage } from '../../context/LanguageContext'
 
 export default function AdminNotificationsPage() {
+  const { t } = useLanguage()
   const [target, setTarget] = useState('all')
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
@@ -52,9 +54,9 @@ export default function AdminNotificationsPage() {
       setMessage('')
       setActionUrl('')
       setSelected([])
-      toast.success('Notification sent.')
+      toast.success(t('admin.notifications.sent', 'Notification sent.'))
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Could not send notification.'))
+      showApiErrorOnce(err, t('admin.notifications.sendError', 'Could not send notification.'))
     } finally {
       setSending(false)
     }
@@ -65,20 +67,20 @@ export default function AdminNotificationsPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-dark-900 flex items-center gap-2">
           <Bell size={22} className="text-brand-500" />
-          Notifications
+          {t('notifications', 'Notifications')}
         </h1>
-        <p className="text-dark-500 text-sm mt-1">Send notifications to users</p>
+        <p className="text-dark-500 text-sm mt-1">{t('admin.notifications.subtitle', 'Send notifications to users')}</p>
       </div>
 
       <div className="bg-white rounded-2xl border border-cream-200 p-6 mb-8">
-        <h2 className="text-base font-semibold text-dark-900 mb-4">Send Notification</h2>
+        <h2 className="text-base font-semibold text-dark-900 mb-4">{t('admin.notifications.sendTitle', 'Send Notification')}</h2>
 
         <div className="flex gap-2 mb-4">
           <button onClick={() => setTarget('all')} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${target === 'all' ? 'bg-brand-500 text-white border-brand-500' : 'bg-white text-dark-600 border-cream-200 hover:border-brand-300'}`}>
-            <Users size={15} /> All Users
+            <Users size={15} /> {t('allUsers', 'All Users')}
           </button>
           <button onClick={() => setTarget('selected')} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${target === 'selected' ? 'bg-brand-500 text-white border-brand-500' : 'bg-white text-dark-600 border-cream-200 hover:border-brand-300'}`}>
-            <User size={15} /> Selected Users
+            <User size={15} /> {t('selectedUsers', 'Selected Users')}
           </button>
         </div>
 
@@ -92,13 +94,13 @@ export default function AdminNotificationsPage() {
           </div>
         )}
 
-        <input type="text" placeholder="Notification title" value={title} onChange={e => setTitle(e.target.value)} className="w-full border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-dark-900 bg-white mb-3 outline-none focus:border-brand-400 transition-colors" />
-        <textarea placeholder="Notification message" value={message} onChange={e => setMessage(e.target.value)} rows={3} className="w-full border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-dark-900 bg-white mb-3 outline-none focus:border-brand-400 transition-colors resize-none" />
-        <input type="text" placeholder="Optional action URL" value={actionUrl} onChange={e => setActionUrl(e.target.value)} className="w-full border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-dark-900 bg-white mb-4 outline-none focus:border-brand-400 transition-colors" />
+        <input type="text" placeholder={t('notificationTitle', 'Notification title')} value={title} onChange={e => setTitle(e.target.value)} className="w-full border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-dark-900 bg-white mb-3 outline-none focus:border-brand-400 transition-colors" />
+        <textarea placeholder={t('notificationMessage', 'Notification message')} value={message} onChange={e => setMessage(e.target.value)} rows={3} className="w-full border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-dark-900 bg-white mb-3 outline-none focus:border-brand-400 transition-colors resize-none" />
+        <input type="text" placeholder={t('optionalActionUrl', 'Optional action URL')} value={actionUrl} onChange={e => setActionUrl(e.target.value)} className="w-full border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-dark-900 bg-white mb-4 outline-none focus:border-brand-400 transition-colors" />
 
         <div className="flex items-center justify-end">
           <button onClick={handleSend} disabled={sending || !title.trim() || !message.trim() || (target === 'selected' && selected.length === 0)} className="flex items-center gap-2 px-5 py-2.5 bg-brand-500 text-white rounded-xl text-sm font-medium hover:bg-brand-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-            <Send size={15} /> {sending ? 'Sending...' : 'Send'}
+            <Send size={15} /> {sending ? t('sending', 'Sending...') : t('send', 'Send')}
           </button>
         </div>
       </div>

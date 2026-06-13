@@ -1,7 +1,9 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '../../utils/helpers'
+import { useLanguage } from '../../context/LanguageContext'
 
 export default function Table({ columns, data, loading, emptyMessage = 'No data found.', onRowClick }) {
+  const { t } = useLanguage()
   if (loading) {
     return (
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card dark:border-slate-700 dark:bg-slate-800">
@@ -38,14 +40,17 @@ export default function Table({ columns, data, loading, emptyMessage = 'No data 
             {data?.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-5 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
-                  {emptyMessage}
+                  {t(emptyMessage, emptyMessage)}
                 </td>
               </tr>
             ) : (
               data?.map((row, i) => (
                 <tr
                   key={row.id ?? i}
-                  onClick={() => onRowClick?.(row)}
+                  onClick={(event) => {
+                    if (event.target.closest('button,a,input,select,textarea,label')) return
+                    onRowClick?.(row)
+                  }}
                   className={cn(
                     'transition-colors duration-150 hover:bg-brand-50/70 dark:hover:bg-slate-700/70',
                     onRowClick && 'cursor-pointer',
@@ -67,6 +72,8 @@ export default function Table({ columns, data, loading, emptyMessage = 'No data 
 }
 
 export function Pagination({ page, totalPages, onPageChange }) {
+  const { t } = useLanguage()
+
   if (totalPages <= 1) return null
   return (
     <div className="mt-4 flex items-center justify-center gap-2">
@@ -75,17 +82,17 @@ export function Pagination({ page, totalPages, onPageChange }) {
         disabled={page === 1}
         className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
       >
-        <ChevronLeft size={14} /> Prev
+        <ChevronLeft size={14} /> {t('prev', 'Prev')}
       </button>
       <span className="px-2 text-sm text-slate-500 dark:text-slate-400">
-        Page {page} of {totalPages}
+        {t('page', 'Page')} {page} {t('of', 'of')} {totalPages}
       </span>
       <button
         onClick={() => onPageChange(page + 1)}
         disabled={page === totalPages}
         className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
       >
-        Next <ChevronRight size={14} />
+        {t('next', 'Next')} <ChevronRight size={14} />
       </button>
     </div>
   )

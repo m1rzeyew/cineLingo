@@ -4,8 +4,10 @@ import Badge from '../../components/ui/Badge'
 import PageHeader, { EmptyState } from '../../components/ui/PageHeader'
 import { cn, formatDate, getApiErrorMessage, scoreColor } from '../../utils/helpers'
 import { quizService } from '../../services'
+import { useLanguage } from '../../context/LanguageContext'
 
 export default function QuizHistoryPage() {
+  const { t } = useLanguage()
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -20,7 +22,7 @@ export default function QuizHistoryPage() {
         const res = await quizService.getMyAttempts()
         if (active) setHistory(Array.isArray(res.data) ? res.data : [])
       } catch (err) {
-        if (active) setError(getApiErrorMessage(err, 'Could not load quiz history.'))
+        if (active) setError(getApiErrorMessage(err, t('quizHistory.loadError', 'Could not load quiz history.')))
       } finally {
         if (active) setLoading(false)
       }
@@ -37,12 +39,12 @@ export default function QuizHistoryPage() {
   return (
     <div className="mx-auto max-w-screen-lg px-5 py-8 sm:px-6">
       <PageHeader
-        eyebrow="Progress"
-        title="Quiz History"
-        description="Review previous attempts, scores, and completion status across your learning sessions."
+        eyebrow={t('progress', 'Progress')}
+        title={t('quizHistory', 'Quiz History')}
+        description={t('quizHistory.description', 'Review previous attempts, scores, and completion status across your learning sessions.')}
         action={
           <div className="rounded-2xl border border-cream-200 bg-white px-5 py-3 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-normal text-dark-400">Average</p>
+            <p className="text-xs font-bold uppercase tracking-normal text-dark-400">{t('average', 'Average')}</p>
             <p className={cn('text-2xl font-black tracking-normal', scoreColor(average))}>{average}%</p>
           </div>
         }
@@ -54,11 +56,9 @@ export default function QuizHistoryPage() {
         </div>
       )}
 
-      {!loading && error && <EmptyState icon={History} title="History unavailable" description={error} />}
+      {!loading && error && <EmptyState icon={History} title={t('historyUnavailable', 'History unavailable')} description={error} />}
 
-      {!loading && !error && history.length === 0 && (
-        <EmptyState icon={Trophy} title="No quiz attempts yet" description="Take a quiz after a unit and your results will show here." />
-      )}
+      {!loading && !error && history.length === 0 && <EmptyState icon={Trophy} title={t('noQuizAttemptsYet', 'No quiz attempts yet')} description={t('quizHistory.emptyDescription', 'Take a quiz after a unit and your results will show here.')} />}
 
       {!loading && !error && history.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-cream-200 bg-white shadow-card">
@@ -73,9 +73,9 @@ export default function QuizHistoryPage() {
                   <span className={cn('text-xl font-black tracking-normal', scoreColor(score))}>{score}%</span>
                 </div>
                 <div className="min-w-0">
-                  <h2 className="truncate text-base font-black tracking-normal text-dark-900">{q.unitTitle || q.quizTitle || 'Quiz attempt'}</h2>
+                  <h2 className="truncate text-base font-black tracking-normal text-dark-900">{q.unitTitle || q.quizTitle || t('quizAttempt', 'Quiz attempt')}</h2>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <Badge variant={q.passed ? 'success' : 'danger'}>{q.passed ? 'Passed' : 'Needs Work'}</Badge>
+                    <Badge variant={q.passed ? 'success' : 'danger'}>{q.passed ? t('passed', 'Passed') : t('needsWork', 'Needs Work')}</Badge>
                     <span className="inline-flex items-center gap-1 text-xs font-semibold text-dark-500">
                       <Clock3 size={13} /> {q.timeTakenSeconds ?? 0}s
                     </span>

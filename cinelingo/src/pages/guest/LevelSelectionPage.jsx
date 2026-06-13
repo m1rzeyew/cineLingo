@@ -7,8 +7,10 @@ import { EmptyState } from '../../components/ui/PageHeader'
 import { levelQuizService } from '../../services'
 import { getApiErrorMessage, levelLabel } from '../../utils/helpers'
 import { useAuth } from '../../context/AuthContext'
+import { useLanguage } from '../../context/LanguageContext'
 
 const LIMIT_SECONDS = 20 * 60
+const STORAGE_KEY = 'cinelingo_level_quiz_state'
 
 const options = (question) => [
   ['A', question.optionA ?? question.OptionA],
@@ -24,9 +26,19 @@ const formatTime = (seconds) => {
   return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
 }
 
+const readSavedState = () => {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 export default function LevelSelectionPage() {
   const navigate = useNavigate()
   const { refreshUser } = useAuth()
+  const { t } = useLanguage()
   const [started, setStarted] = useState(false)
   const [questions, setQuestions] = useState([])
   const [current, setCurrent] = useState(0)
@@ -46,16 +58,60 @@ export default function LevelSelectionPage() {
     selectedOption: answers[item.id ?? item.Id] || '',
   })), [answers, questions])
 
+  useEffect(() => {
+    const saved = readSavedState()
+    if (!saved) return
+
+    if (saved.result) {
+      setResult(saved.result)
+      return
+    }
+
+    if (!saved.started || !Array.isArray(saved.questions) || saved.questions.length === 0) return
+
+    setStarted(true)
+    setQuestions(saved.questions)
+    setCurrent(Number(saved.current ?? 0))
+    setAnswers(saved.answers || {})
+    setRemaining(Number(saved.remaining ?? LIMIT_SECONDS))
+    setError(saved.error || null)
+  }, [])
+
+  useEffect(() => {
+    if (!started) return
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+        started,
+        questions,
+        current,
+        answers,
+        remaining,
+        result,
+        error,
+      }))
+    } catch {
+    }
+  }, [answers, current, done, error, questions, remaining, result, started])
+
+  const clearSavedState = () => {
+    try {
+      sessionStorage.removeItem(STORAGE_KEY)
+    } catch {
+    }
+  }
+
   const submitQuiz = async () => {
     if (submitting || done || questions.length === 0) return
     setSubmitting(true)
     try {
       const res = await levelQuizService.submit(answerPayload)
       setResult(res.data)
+      setError(null)
+      clearSavedState()
       await refreshUser()
-      toast.success('Placement quiz completed.')
+      toast.success(t('placement.completed', 'Placement quiz completed.'))
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Could not submit placement quiz.'))
+      setError(getApiErrorMessage(err, t('placement.submitError', 'Could not submit placement quiz.')))
     } finally {
       setSubmitting(false)
     }
@@ -79,6 +135,7 @@ export default function LevelSelectionPage() {
   const startQuiz = async () => {
     setLoading(true)
     setError(null)
+    clearSavedState()
     try {
       const res = await levelQuizService.getQuestions()
       const nextQuestions = Array.isArray(res.data) ? res.data.slice(0, 15) : []
@@ -88,7 +145,7 @@ export default function LevelSelectionPage() {
       setAnswers({})
       setRemaining(LIMIT_SECONDS)
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Could not load placement questions.'))
+      setError(getApiErrorMessage(err, t('placement.loadError', 'Could not load placement questions.')))
     } finally {
       setLoading(false)
     }
@@ -126,13 +183,13 @@ export default function LevelSelectionPage() {
             <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300">
               <Play size={24} />
             </div>
-            <h1 className="text-3xl font-black tracking-normal text-slate-950 dark:text-white">Start Placement Quiz</h1>
+            <h1 className="text-3xl font-black tracking-normal text-slate-950 dark:text-white">{t('placement.startTitle', 'Start Quiz')}</h1>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-              Answer 15 multiple-choice questions in 20 minutes. CineLingo will assign your learning level automatically.
+              {t('placement.startDescription', 'Answer 15 multiple-choice questions in 20 minutes. CineLingo will assign your learning level automatically.')}
             </p>
             {error && <p className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</p>}
             <Button className="mt-8 min-w-[180px]" size="lg" variant="brand" loading={loading} onClick={startQuiz}>
-              Start Quiz <ArrowRight size={17} />
+              {t('placement.startButton', 'Start Quiz')} <ArrowRight size={17} />
             </Button>
           </div>
         )}
@@ -142,7 +199,7 @@ export default function LevelSelectionPage() {
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-normal text-brand-600 dark:text-brand-300">
-                  Question {current + 1} of {questions.length}
+                  {t('placement.questionProgress', 'Question')} {current + 1} {t('placement.of', 'of')} {questions.length}
                 </p>
                 <div className="mt-2 h-2 w-48 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
                   <div className="h-full rounded-full bg-brand-500" style={{ width: `${((current + 1) / questions.length) * 100}%` }} />
@@ -182,14 +239,14 @@ export default function LevelSelectionPage() {
 
             <div className="mt-8 flex justify-end">
               <Button variant="brand" disabled={!selected} loading={submitting} onClick={next}>
-                {current >= questions.length - 1 ? 'Submit Quiz' : 'Next Question'} <ArrowRight size={16} />
+                {current >= questions.length - 1 ? t('placement.submit', 'Submit Quiz') : t('placement.next', 'Next Question')} <ArrowRight size={16} />
               </Button>
             </div>
           </div>
         )}
 
         {started && !result && !question && !loading && (
-          <EmptyState icon={GraduationCap} title="Placement quiz unavailable" description={error || 'No placement questions were returned.'} />
+          <EmptyState icon={GraduationCap} title={t('placement.unavailableTitle', 'Placement quiz unavailable')} description={error || t('placement.unavailableDescription', 'No placement questions were returned.')} />
         )}
 
         {result && (
@@ -198,13 +255,13 @@ export default function LevelSelectionPage() {
               <CheckCircle size={26} />
             </div>
             <h1 className="text-3xl font-black tracking-normal text-slate-950 dark:text-white">
-              Your Level: {levelLabel(result.assignedLevel ?? result.AssignedLevel)}
+              {t('placement.assignedLevel', 'Your Level:')} {levelLabel(result.assignedLevel ?? result.AssignedLevel)}
             </h1>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-              Your dashboard is ready with learning units matched to your placement.
+              {t('placement.resultDescription', 'Your dashboard is ready with learning units matched to your placement.')}
             </p>
             <Button className="mt-8 min-w-[190px]" size="lg" variant="brand" onClick={() => navigate('/dashboard', { replace: true })}>
-              Go to Dashboard <ArrowRight size={17} />
+              {t('placement.goDashboard', 'Go to Dashboard')} <ArrowRight size={17} />
             </Button>
           </div>
         )}

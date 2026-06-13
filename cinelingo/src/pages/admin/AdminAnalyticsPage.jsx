@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import Card from '../../components/ui/Card'
 import { adminService } from '../../services'
+import { useLanguage } from '../../context/LanguageContext'
 
 export default function AdminAnalyticsPage() {
+  const { t } = useLanguage()
   const [stats, setStats] = useState({})
   const [loading, setLoading] = useState(true)
 
@@ -31,28 +33,28 @@ export default function AdminAnalyticsPage() {
   }, [])
 
   const summary = [
-    { label: 'Total Revenue', value: `$${Number(stats.totalRevenue ?? 0).toLocaleString()}` },
-    { label: 'Revenue This Month', value: `$${Number(stats.revenueThisMonth ?? 0).toLocaleString()}` },
-    { label: 'Retention 7 Days', value: `${Math.round(stats.retentionRate7Days ?? 0)}%` },
-    { label: 'Avg Quiz Score', value: `${Math.round(stats.averageScore ?? 0)}%` },
+    { label: t('analytics.totalRevenue', 'Total Revenue'), value: `$${Number(stats.totalRevenue ?? 0).toLocaleString()}` },
+    { label: t('analytics.revenueThisMonth', 'Revenue This Month'), value: `$${Number(stats.revenueThisMonth ?? 0).toLocaleString()}` },
+    { label: t('analytics.retention7Days', 'Retention 7 Days'), value: `${Math.round(stats.retentionRate7Days ?? 0)}%` },
+    { label: t('analytics.avgQuizScore', 'Avg Quiz Score'), value: `${Math.round(stats.averageScore ?? 0)}%` },
   ]
 
   const chart = [
-    { label: 'Attempts', value: stats.totalAttempts ?? 0 },
-    { label: 'Passed', value: stats.totalPassed ?? 0 },
-    { label: 'Failed', value: stats.totalFailed ?? 0 },
-    { label: 'Active 7d', value: stats.activeLast7Days ?? 0 },
-    { label: 'Active 30d', value: stats.activeLast30Days ?? 0 },
+    { label: t('attempts', 'Attempts'), value: stats.totalAttempts ?? 0 },
+    { label: t('passed', 'Passed'), value: stats.totalPassed ?? 0 },
+    { label: t('failed', 'Failed'), value: stats.totalFailed ?? 0 },
+    { label: t('active7d', 'Active 7d'), value: stats.activeLast7Days ?? 0 },
+    { label: t('active30d', 'Active 30d'), value: stats.activeLast30Days ?? 0 },
   ]
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold font-display text-dark-900">Analytics</h1>
-        <p className="text-dark-400 text-sm mt-0.5">Revenue, retention, and learning performance</p>
+        <h1 className="text-2xl font-bold font-display text-dark-900">{t('analytics', 'Analytics')}</h1>
+        <p className="text-dark-400 text-sm mt-0.5">{t('analytics.subtitle', 'Revenue, retention, and learning performance')}</p>
       </div>
 
-      {loading && <p className="text-sm text-dark-500">Loading analytics...</p>}
+      {loading && <p className="text-sm text-dark-500">{t('loadingAnalytics', 'Loading analytics...')}</p>}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {summary.map(({ label, value }) => (
@@ -64,7 +66,7 @@ export default function AdminAnalyticsPage() {
       </div>
 
       <Card>
-        <h2 className="font-semibold font-display text-dark-900 mb-5">Engagement Overview</h2>
+        <h2 className="font-semibold font-display text-dark-900 mb-5">{t('analytics.engagementOverview', 'Engagement Overview')}</h2>
         <ResponsiveContainer width="100%" height={260}>
           <BarChart data={chart}>
             <CartesianGrid strokeDasharray="3 3" stroke="#ede5d5" />

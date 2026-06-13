@@ -4,8 +4,10 @@ import { useAuth } from '../../context/AuthContext'
 import Card from '../../components/ui/Card'
 import PageHeader from '../../components/ui/PageHeader'
 import { profileService, streakService, vocabularyService } from '../../services'
+import { useLanguage } from '../../context/LanguageContext'
 
 export default function StatsPage() {
+  const { t } = useLanguage()
   const { user } = useAuth()
   const [stats, setStats] = useState(null)
   const [streak, setStreak] = useState(null)
@@ -35,27 +37,27 @@ export default function StatsPage() {
   }, [])
 
   const values = [
-    ['Total Points', xp ?? user?.totalPoints ?? 0],
-    ['Words Saved', stats?.totalSavedWords ?? stats?.savedWords ?? user?.wordsSaved ?? 0],
-    ['Units Started', stats?.totalUnitsStarted ?? 0],
-    ['Units Completed', stats?.totalUnitsCompleted ?? user?.unitsCompleted ?? 0],
-    ['Quizzes Taken', stats?.totalQuizzesTaken ?? user?.quizzesTaken ?? 0],
-    ['Quizzes Passed', stats?.totalQuizzesPassed ?? 0],
-    ['Best Streak', streak?.bestStreak ?? user?.bestStreak ?? 0],
-    ['Current Streak', streak?.currentStreak ?? streak?.streak ?? user?.streak ?? 0],
+    [t('totalPoints', 'Total Points'), xp ?? user?.totalPoints ?? 0],
+    [t('wordsSaved', 'Words Saved'), stats?.totalSavedWords ?? stats?.savedWords ?? user?.wordsSaved ?? 0],
+    [t('unitsStarted', 'Units Started'), stats?.totalUnitsStarted ?? 0],
+    [t('unitsCompleted', 'Units Completed'), stats?.totalUnitsCompleted ?? user?.unitsCompleted ?? 0],
+    [t('quizzesTaken', 'Quizzes Taken'), stats?.totalQuizzesTaken ?? user?.quizzesTaken ?? 0],
+    [t('quizzesPassed', 'Quizzes Passed'), stats?.totalQuizzesPassed ?? 0],
+    [t('bestStreak', 'Best Streak'), streak?.bestStreak ?? user?.bestStreak ?? 0],
+    [t('currentStreak', 'Current Streak'), streak?.currentStreak ?? streak?.streak ?? user?.streak ?? 0],
   ]
 
   return (
     <div className="mx-auto max-w-screen-lg px-4 py-6 sm:px-6 lg:py-8">
       <PageHeader
-        eyebrow="Progress"
-        title="My stats"
-        description="A compact summary of your learning activity, saved words, quiz performance, and streaks."
+        eyebrow={t('progress', 'Progress')}
+        title={t('myStats', 'My stats')}
+        description={t('stats.description', 'A compact summary of your learning activity, saved words, quiz performance, and streaks.')}
       />
 
       <Card>
         {loading ? (
-          <p className="text-sm text-dark-500">Loading stats...</p>
+          <p className="text-sm text-dark-500">{t('loadingStats', 'Loading stats...')}</p>
         ) : (
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {values.map(([label, val], index) => (

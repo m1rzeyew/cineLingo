@@ -5,6 +5,7 @@ import Button from '../ui/Button'
 import toast from 'react-hot-toast'
 import { paymentService } from '../../services'
 import { getApiErrorMessage } from '../../utils/helpers'
+import { useLanguage } from '../../context/LanguageContext'
 
 const FEATURES = [
   'Access Intermediate and Advanced units',
@@ -19,6 +20,7 @@ const PLANS = [
 ]
 
 export default function PaywallModal({ open, onClose, onSuccess }) {
+  const { t } = useLanguage()
   const [selected, setSelected] = useState(null)
   const [subscribing, setSubscribing] = useState(false)
 
@@ -32,10 +34,10 @@ export default function PaywallModal({ open, onClose, onSuccess }) {
         window.location.href = url
         return
       }
-      toast.success('Checkout session created.')
+      toast.success(t('payment.checkoutCreated', 'Checkout session created.'))
       onSuccess?.()
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Could not start checkout.'))
+      toast.error(getApiErrorMessage(err, t('payment.checkoutError', 'Could not start checkout.')))
     } finally {
       setSubscribing(false)
     }
@@ -47,14 +49,14 @@ export default function PaywallModal({ open, onClose, onSuccess }) {
         <div className="w-14 h-14 bg-brand-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
           <Crown size={28} className="text-brand-500" />
         </div>
-        <h2 className="text-2xl font-bold font-display text-dark-900">Unlock All Levels</h2>
+        <h2 className="text-2xl font-bold font-display text-dark-900">{t('payment.unlockAllLevels', 'Unlock All Levels')}</h2>
         <p className="text-dark-600 mt-1 text-sm leading-relaxed">
-          Subscribe to continue your cinematic English journey.
+          {t('payment.subscribeCta', 'Subscribe to continue your cinematic English journey.')}
         </p>
       </div>
 
       <div className="bg-cream-50 rounded-2xl p-4 mb-5">
-        <p className="text-xs font-semibold text-dark-700 mb-3 uppercase tracking-normal">What you'll get:</p>
+        <p className="text-xs font-semibold text-dark-700 mb-3 uppercase tracking-normal">{t('payment.whatsIncluded', "What you'll get:")}</p>
         <ul className="space-y-2">
           {FEATURES.map(f => (
             <li key={f} className="flex items-start gap-2 text-sm text-dark-700">
@@ -78,9 +80,9 @@ export default function PaywallModal({ open, onClose, onSuccess }) {
       </div>
 
       <Button fullWidth variant="brand" size="lg" loading={subscribing} disabled={!selected} onClick={handleSubscribe}>
-        <Zap size={16} /> Subscribe Now
+        <Zap size={16} /> {t('payment.subscribeNow', 'Subscribe Now')}
       </Button>
-      <p className="text-center text-xs text-dark-600/50 mt-3">Secure payment. Instant access after confirmation.</p>
+      <p className="text-center text-xs text-dark-600/50 mt-3">{t('payment.secureNote', 'Secure payment. Instant access after confirmation.')}</p>
     </Modal>
   )
 }

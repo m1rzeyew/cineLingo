@@ -3,17 +3,19 @@ import { Users, BookOpen, Trophy, TrendingUp, HelpCircle, Video } from 'lucide-r
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Card from '../../components/ui/Card'
 import { adminService } from '../../services'
+import { useLanguage } from '../../context/LanguageContext'
 
 const STAT_CARDS = [
-  { key: 'totalUsers', label: 'Total Users', icon: Users, color: 'text-brand-500' },
-  { key: 'totalUnits', label: 'Total Units', icon: BookOpen, color: 'text-brand-500' },
-  { key: 'totalVideoClips', label: 'Videos', icon: Video, color: 'text-accent-500' },
-  { key: 'totalQuizzes', label: 'Quizzes', icon: HelpCircle, color: 'text-warning-500' },
-  { key: 'totalCompletedPayments', label: 'Payments', icon: Trophy, color: 'text-brand-500' },
-  { key: 'activeLast7Days', label: 'Active 7 Days', icon: TrendingUp, color: 'text-accent-500' },
+  { key: 'totalUsers', label: 'admin.totalUsers', fallback: 'Total Users', icon: Users, color: 'text-brand-500' },
+  { key: 'totalUnits', label: 'admin.totalUnits', fallback: 'Total Units', icon: BookOpen, color: 'text-brand-500' },
+  { key: 'totalVideoClips', label: 'admin.videos', fallback: 'Videos', icon: Video, color: 'text-accent-500' },
+  { key: 'totalQuizzes', label: 'quizzes', fallback: 'Quizzes', icon: HelpCircle, color: 'text-warning-500' },
+  { key: 'totalCompletedPayments', label: 'admin.payments', fallback: 'Payments', icon: Trophy, color: 'text-brand-500' },
+  { key: 'activeLast7Days', label: 'admin.active7Days', fallback: 'Active 7 Days', icon: TrendingUp, color: 'text-accent-500' },
 ]
 
 export default function AdminDashboardPage() {
+  const { t } = useLanguage()
   const [stats, setStats] = useState({})
   const [chart, setChart] = useState([])
   const [loading, setLoading] = useState(true)
@@ -40,30 +42,30 @@ export default function AdminDashboardPage() {
       }
       setStats(next)
       setChart([
-        { label: 'Users', value: next.totalUsers ?? 0 },
-        { label: 'Units', value: next.totalUnits ?? 0 },
-        { label: 'Words', value: next.totalWords ?? 0 },
-        { label: 'Quizzes', value: next.totalQuizzes ?? 0 },
+        { label: t('users', 'Users'), value: next.totalUsers ?? 0 },
+        { label: t('units', 'Units'), value: next.totalUnits ?? 0 },
+        { label: t('words', 'Words'), value: next.totalWords ?? 0 },
+        { label: t('quizzes', 'Quizzes'), value: next.totalQuizzes ?? 0 },
       ])
       setLoading(false)
     }
 
     load()
     return () => { active = false }
-  }, [])
+  }, [t])
 
   return (
     <div className="animate-fade-in">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold font-display text-dark-900">Dashboard</h1>
-        <p className="text-dark-600 text-sm mt-0.5">Welcome to the CineLingo admin panel</p>
+        <h1 className="text-2xl font-bold font-display text-dark-900">{t('dashboard', 'Dashboard')}</h1>
+        <p className="text-dark-600 text-sm mt-0.5">{t('admin.dashboardSubtitle', 'Welcome to the CineLingo admin panel')}</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        {STAT_CARDS.map(({ key, label, icon: Icon, color }) => (
+        {STAT_CARDS.map(({ key, label, fallback, icon: Icon, color }) => (
           <Card key={key}>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-dark-500 uppercase tracking-normal">{label}</span>
+              <span className="text-xs font-semibold text-dark-500 uppercase tracking-normal">{t(label, fallback)}</span>
               <Icon size={18} className={color} />
             </div>
             <p className="text-3xl font-bold font-display text-dark-900">
@@ -74,7 +76,7 @@ export default function AdminDashboardPage() {
       </div>
 
       <Card>
-        <h2 className="font-semibold text-dark-900 mb-5 font-display">Content Overview</h2>
+        <h2 className="font-semibold text-dark-900 mb-5 font-display">{t('admin.contentOverview', 'Content Overview')}</h2>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={chart}>
             <XAxis dataKey="label" tick={{ fontSize: 11 }} />

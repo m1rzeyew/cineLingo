@@ -1,6 +1,10 @@
 import api from '../api/axiosConfig'
 
 const list = (value) => Array.isArray(value) ? value : []
+const toId = (value) => {
+  const parsed = Number.parseInt(String(value ?? '').trim(), 10)
+  return Number.isFinite(parsed) ? parsed : null
+}
 const getStoredUserId = () => {
   try {
     const raw = localStorage.getItem('cinelingo_user')
@@ -10,6 +14,10 @@ const getStoredUserId = () => {
   } catch {
     return ''
   }
+}
+const toUserId = (value) => {
+  const parsed = String(value ?? '').trim()
+  return parsed.length ? parsed : null
 }
 
 const toFormData = (data = {}) => {
@@ -25,10 +33,26 @@ const toFormData = (data = {}) => {
 
 export const unitService = {
   getAll: (params) => api.get('/api/Unit', { params }),
-  getById: (id) => api.get(`/api/Unit/${id}`),
-  start: (id) => api.post(`/api/Unit/${id}/start`),
-  complete: (id) => api.post(`/api/Unit/${id}/complete`),
-  review: (id, data) => api.post(`/api/Unit/${id}/review`, data),
+  getById: (id) => {
+    const unitId = toId(id)
+    if (unitId == null) return Promise.reject(new Error('Missing unit id'))
+    return api.get(`/api/Unit/${unitId}`)
+  },
+  start: (id) => {
+    const unitId = toId(id)
+    if (unitId == null) return Promise.reject(new Error('Missing unit id'))
+    return api.post(`/api/Unit/${unitId}/start`)
+  },
+  complete: (id) => {
+    const unitId = toId(id)
+    if (unitId == null) return Promise.reject(new Error('Missing unit id'))
+    return api.post(`/api/Unit/${unitId}/complete`)
+  },
+  review: (id, data) => {
+    const unitId = toId(id)
+    if (unitId == null) return Promise.reject(new Error('Missing unit id'))
+    return api.post(`/api/Unit/${unitId}/review`, data)
+  },
   create: (data) => api.post('/api/Unit', toFormData({
     Title: data.title ?? data.Title,
     Description: data.description ?? data.Description,
@@ -37,29 +61,65 @@ export const unitService = {
   }), {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
-  update: (id, data) => api.patch(`/api/Unit/${id}`, toFormData({
-    Title: data.title ?? data.Title,
-    Description: data.description ?? data.Description,
-    EnglishLevel: data.englishLevel ?? data.EnglishLevel,
-    ImageFile: data.imageFile ?? data.ImageFile,
-  }), {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
-  delete: (id) => api.delete(`/api/Unit/${id}`),
-  publish: (id) => api.patch(`/api/Unit/${id}/publish`),
-  unpublish: (id) => api.patch(`/api/Unit/${id}/unpublish`),
+  update: (id, data) => {
+    const unitId = toId(id)
+    if (unitId == null) return Promise.reject(new Error('Missing unit id'))
+    return api.patch(`/api/Unit/${unitId}`, toFormData({
+      Title: data.title ?? data.Title,
+      Description: data.description ?? data.Description,
+      EnglishLevel: data.englishLevel ?? data.EnglishLevel,
+      ImageFile: data.imageFile ?? data.ImageFile,
+    }), {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  delete: (id) => {
+    const unitId = toId(id)
+    if (unitId == null) return Promise.reject(new Error('Missing unit id'))
+    return api.delete(`/api/Unit/${unitId}`)
+  },
+  publish: (id) => {
+    const unitId = toId(id)
+    if (unitId == null) return Promise.reject(new Error('Missing unit id'))
+    return api.patch(`/api/Unit/${unitId}/publish`)
+  },
+  unpublish: (id) => {
+    const unitId = toId(id)
+    if (unitId == null) return Promise.reject(new Error('Missing unit id'))
+    return api.patch(`/api/Unit/${unitId}/unpublish`)
+  },
 }
 
 export const videoService = {
   getAll: (params) => api.get('/api/Video', { params }),
-  getById: (id) => api.get(`/api/Video/${id}`),
-  getByUnit: (unitId) => api.get(`/api/Video/unit/${unitId}`),
+  getById: (id) => {
+    const videoId = toId(id)
+    if (videoId == null) return Promise.reject(new Error('Missing video id'))
+    return api.get(`/api/Video/${videoId}`)
+  },
+  getByUnit: (unitId) => {
+    const nextUnitId = toId(unitId)
+    if (nextUnitId == null) return Promise.reject(new Error('Missing unit id'))
+    return api.get(`/api/Video/unit/${nextUnitId}`)
+  },
   getPopular: (take = 10) => api.get('/api/Video/popular', { params: { take } }),
   getRecent: (take = 10) => api.get('/api/Video/recent', { params: { take } }),
   search: (q) => api.get('/api/Video/search', { params: { q } }),
-  getWatchProgress: (id) => api.get(`/api/Video/${id}/watch-progress`),
-  markWatched: (id) => api.post(`/api/Video/${id}/watch`),
-  updateWatchProgress: (id, watched) => api.post(`/api/Video/${id}/watch-progress`, { Watched: watched }),
+  getWatchProgress: (id) => {
+    const videoId = toId(id)
+    if (videoId == null) return Promise.reject(new Error('Missing video id'))
+    return api.get(`/api/Video/${videoId}/watch-progress`)
+  },
+  markWatched: (id) => {
+    const videoId = toId(id)
+    if (videoId == null) return Promise.reject(new Error('Missing video id'))
+    return api.post(`/api/Video/${videoId}/watch`)
+  },
+  updateWatchProgress: (id, watched) => {
+    const videoId = toId(id)
+    if (videoId == null) return Promise.reject(new Error('Missing video id'))
+    return api.post(`/api/Video/${videoId}/watch-progress`, { Watched: watched })
+  },
   create: (data) => api.post('/api/Video', toFormData({
     UnitId: data.unitId ?? data.UnitId,
     Title: data.title ?? data.Title,
@@ -68,43 +128,105 @@ export const videoService = {
   }), {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
-  update: (id, data) => api.patch(`/api/Video/${id}`, toFormData({
-    Title: data.title ?? data.Title,
-    VideoFile: data.videoFile ?? data.VideoFile,
-    SubtitleFile: data.subtitleFile ?? data.SubtitleFile,
-  }), {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
-  delete: (id) => api.delete(`/api/Video/${id}`),
-  publish: (id) => api.patch(`/api/Video/${id}/publish`),
-  unpublish: (id) => api.patch(`/api/Video/${id}/unpublish`),
+  update: (id, data) => {
+    const videoId = toId(id)
+    if (videoId == null) return Promise.reject(new Error('Missing video id'))
+    return api.patch(`/api/Video/${videoId}`, toFormData({
+      Title: data.title ?? data.Title,
+      VideoFile: data.videoFile ?? data.VideoFile,
+      SubtitleFile: data.subtitleFile ?? data.SubtitleFile,
+    }), {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  delete: (id) => {
+    const videoId = toId(id)
+    if (videoId == null) return Promise.reject(new Error('Missing video id'))
+    return api.delete(`/api/Video/${videoId}`)
+  },
+  publish: (id) => {
+    const videoId = toId(id)
+    if (videoId == null) return Promise.reject(new Error('Missing video id'))
+    return api.patch(`/api/Video/${videoId}/publish`)
+  },
+  unpublish: (id) => {
+    const videoId = toId(id)
+    if (videoId == null) return Promise.reject(new Error('Missing video id'))
+    return api.patch(`/api/Video/${videoId}/unpublish`)
+  },
 }
 
 export const wordService = {
   getAll: (params) => api.get('/api/Word', { params }),
-  getById: (wordId, params) => api.get(`/api/Word/${wordId}`, { params }),
-  getByUnit: (unitId) => api.get(`/api/Word/unit/${unitId}`),
-  save: (wordId) => api.post(`/api/Word/${wordId}/save`),
-  unsave: (wordId) => api.delete(`/api/Word/${wordId}/save`),
-  markKnown: (id) => api.post(`/api/Word/${id}/known`),
-  unmarkKnown: (id) => api.delete(`/api/Word/${id}/known`),
-  report: (id, data) => api.post(`/api/Word/${id}/report`, data),
+  getById: (wordId, params) => {
+    const nextWordId = toId(wordId)
+    const nextUnitId = toId(params?.unitId ?? params?.UnitId)
+    if (nextWordId == null) return Promise.reject(new Error('Missing word id'))
+    if (nextUnitId == null) return Promise.reject(new Error('Missing unit id'))
+    return api.get(`/api/Word/${nextWordId}`, { params: { unitId: nextUnitId } })
+  },
+  getByUnit: (unitId) => {
+    const nextUnitId = toId(unitId)
+    if (nextUnitId == null) return Promise.reject(new Error('Missing unit id'))
+    return api.get(`/api/Word/unit/${nextUnitId}`)
+  },
+  save: (wordId) => {
+    const nextWordId = toId(wordId)
+    if (nextWordId == null) return Promise.reject(new Error('Missing word id'))
+    return api.post(`/api/Word/${nextWordId}/save`)
+  },
+  unsave: (wordId) => {
+    const nextWordId = toId(wordId)
+    if (nextWordId == null) return Promise.reject(new Error('Missing word id'))
+    return api.delete(`/api/Word/${nextWordId}/save`)
+  },
+  markKnown: (id) => {
+    const nextWordId = toId(id)
+    if (nextWordId == null) return Promise.reject(new Error('Missing word id'))
+    return api.post(`/api/Word/${nextWordId}/known`)
+  },
+  unmarkKnown: (id) => {
+    const nextWordId = toId(id)
+    if (nextWordId == null) return Promise.reject(new Error('Missing word id'))
+    return api.delete(`/api/Word/${nextWordId}/known`)
+  },
+  report: (id, data) => {
+    const nextWordId = toId(id)
+    if (nextWordId == null) return Promise.reject(new Error('Missing word id'))
+    return api.post(`/api/Word/${nextWordId}/report`, data)
+  },
   getDaily: () => api.get('/api/Word/daily'),
   getReports: () => api.get('/api/Word/reports'),
   approveReport: (id) => api.patch(`/api/Word/reports/${id}/approve`),
-  create: (data) => api.post('/api/Word', {
-    Term: data.term ?? data.Term,
-    Definition: data.definition ?? data.Definition,
-    ExampleSentence: data.exampleSentence ?? data.ExampleSentence,
-    Pronunciation: data.pronunciation ?? data.Pronunciation,
-  }, { params: { id: data.unitId ?? data.UnitId } }),
-  update: (wordId, data) => api.patch(`/api/Word/${wordId}`, {
-    Term: data.term ?? data.Term,
-    Definition: data.definition ?? data.Definition,
-    ExampleSentence: data.exampleSentence ?? data.ExampleSentence,
-    Pronunciation: data.pronunciation ?? data.Pronunciation,
-  }, { params: { unitId: data.unitId ?? data.UnitId } }),
-  delete: (wordId, unitId) => api.delete(`/api/Word/${wordId}`, { params: { unitId } }),
+  create: (data) => {
+    const unitId = toId(data.unitId ?? data.UnitId)
+    if (unitId == null) return Promise.reject(new Error('Missing unit id'))
+    return api.post('/api/Word', {
+      Term: data.term ?? data.Term,
+      Definition: data.definition ?? data.Definition,
+      ExampleSentence: data.exampleSentence ?? data.ExampleSentence,
+      Pronunciation: data.pronunciation ?? data.Pronunciation,
+    }, { params: { unitId } })
+  },
+  update: (wordId, data) => {
+    const nextWordId = toId(wordId)
+    const unitId = toId(data.unitId ?? data.UnitId)
+    if (nextWordId == null) return Promise.reject(new Error('Missing word id'))
+    if (unitId == null) return Promise.reject(new Error('Missing unit id'))
+    return api.patch(`/api/Word/${nextWordId}`, {
+      Term: data.term ?? data.Term,
+      Definition: data.definition ?? data.Definition,
+      ExampleSentence: data.exampleSentence ?? data.ExampleSentence,
+      Pronunciation: data.pronunciation ?? data.Pronunciation,
+    }, { params: { unitId } })
+  },
+  delete: (wordId, unitId) => {
+    const nextWordId = toId(wordId)
+    const nextUnitId = toId(unitId)
+    if (nextWordId == null) return Promise.reject(new Error('Missing word id'))
+    if (nextUnitId == null) return Promise.reject(new Error('Missing unit id'))
+    return api.delete(`/api/Word/${nextWordId}`, { params: { unitId: nextUnitId } })
+  },
 }
 
 export const vocabularyService = {
@@ -121,8 +243,16 @@ export const vocabularyService = {
 
 export const quizService = {
   getAll: (params) => api.get('/api/Quiz', { params }),
-  getById: (id) => api.get(`/api/Quiz/${id}`),
-  getByUnit: (unitId) => api.get(`/api/Quiz/unit/${unitId}`),
+  getById: (id) => {
+    const quizId = toId(id)
+    if (quizId == null) return Promise.reject(new Error('Missing quiz id'))
+    return api.get(`/api/Quiz/${quizId}`)
+  },
+  getByUnit: (unitId) => {
+    const nextUnitId = toId(unitId)
+    if (nextUnitId == null) return Promise.reject(new Error('Missing unit id'))
+    return api.get(`/api/Quiz/unit/${nextUnitId}`)
+  },
   submit: ({ quizId, answers, timeTakenSeconds = 0 }) =>
     api.post('/api/Quiz/submit', {
       QuizId: quizId,
@@ -136,37 +266,48 @@ export const quizService = {
   getHistory: (quizId) => api.get(`/api/Quiz/history/${quizId}`),
   getMyAttempts: () => api.get('/api/Quiz/my-attempts'),
   getAttemptDetail: (attemptId) => api.get(`/api/Quiz/my-attempts/${attemptId}`),
-  create: (data) => api.post('/api/Quiz', {
-    UnitId: data.unitId ?? data.UnitId,
-    Title: data.title ?? data.Title,
-    PassingScore: Number(data.passingScore ?? data.PassingScore ?? 70),
-    Questions: list(data.questions ?? data.Questions).map(question => ({
-      Id: question.id ?? question.Id ?? 0,
-      QuestionText: question.questionText ?? question.QuestionText,
-      OptionA: question.optionA ?? question.OptionA,
-      OptionB: question.optionB ?? question.OptionB,
-      OptionC: question.optionC ?? question.OptionC,
-      OptionD: question.optionD ?? question.OptionD,
-      CorrectOption: question.correctOption ?? question.CorrectOption,
-    })),
-  }),
-  update: (id, data) => api.patch(`/api/Quiz/${id}`, {
-    Title: data.title ?? data.Title,
-    PassingScore: data.passingScore ?? data.PassingScore,
-    Questions: data.questions || data.Questions ? list(data.questions ?? data.Questions).map(question => ({
-      QuestionText: question.questionText ?? question.QuestionText,
-      OptionA: question.optionA ?? question.OptionA,
-      OptionB: question.optionB ?? question.OptionB,
-      OptionC: question.optionC ?? question.OptionC,
-      OptionD: question.optionD ?? question.OptionD,
-      CorrectOption: question.correctOption ?? question.CorrectOption,
-    })) : undefined,
-  }),
-  delete: (id) => api.delete(`/api/Quiz/${id}`),
+  create: (data) => {
+    const unitId = toId(data.unitId ?? data.UnitId)
+    if (unitId == null) return Promise.reject(new Error('Missing unit id'))
+    return api.post('/api/Quiz', {
+      UnitId: unitId,
+      Title: data.title ?? data.Title,
+      PassingScore: Number(data.passingScore ?? data.PassingScore ?? 70),
+      Questions: list(data.questions ?? data.Questions).map(question => ({
+        QuestionText: question.questionText ?? question.QuestionText,
+        OptionA: question.optionA ?? question.OptionA,
+        OptionB: question.optionB ?? question.OptionB,
+        OptionC: question.optionC ?? question.OptionC,
+        OptionD: question.optionD ?? question.OptionD,
+        CorrectOption: question.correctOption ?? question.CorrectOption,
+      })),
+    })
+  },
+  update: (id, data) => {
+    const quizId = toId(id)
+    if (quizId == null) return Promise.reject(new Error('Missing quiz id'))
+    return api.patch(`/api/Quiz/${quizId}`, {
+      Title: data.title ?? data.Title,
+      PassingScore: data.passingScore ?? data.PassingScore,
+      Questions: data.questions || data.Questions ? list(data.questions ?? data.Questions).map(question => ({
+        QuestionText: question.questionText ?? question.QuestionText,
+        OptionA: question.optionA ?? question.OptionA,
+        OptionB: question.optionB ?? question.OptionB,
+        OptionC: question.optionC ?? question.OptionC,
+        OptionD: question.optionD ?? question.OptionD,
+        CorrectOption: question.correctOption ?? question.CorrectOption,
+      })) : undefined,
+    })
+  },
+  delete: (id) => {
+    const quizId = toId(id)
+    if (quizId == null) return Promise.reject(new Error('Missing quiz id'))
+    return api.delete(`/api/Quiz/${quizId}`)
+  },
   generate: (unitId) => {
-    const nextUnitId = unitId == null ? '' : String(unitId).trim()
-    if (!nextUnitId) return Promise.reject(new Error('Missing unitId'))
-    return api.post('/api/Quiz/generate', null, { params: { unitId: nextUnitId } })
+    const nextUnitId = toId(unitId)
+    if (nextUnitId == null) return Promise.reject(new Error('Missing unitId'))
+    return api.post(`/api/Quiz/generate/${nextUnitId}`)
   },
 }
 
@@ -264,11 +405,31 @@ export const adminService = {
   }),
 
   getUsers: () => api.get('/api/Admin/users'),
-  getUserById: (id) => api.get(`/api/Admin/users/${id}`),
-  deleteUser: (id) => api.delete(`/api/Admin/users/${id}`),
-  updateUserRole: (id, role) => api.patch(`/api/Admin/users/${id}/role`, { Role: role }),
-  banUser: (id, data) => api.put(`/api/Admin/users/${id}/ban`, { Reason: data?.reason ?? data?.Reason }),
-  unbanUser: (id) => api.put(`/api/Admin/users/${id}/unban`),
+  getUserById: (id) => {
+    const userId = toUserId(id)
+    if (!userId) return Promise.reject(new Error('Missing user id'))
+    return api.get(`/api/Admin/users/${encodeURIComponent(userId)}`)
+  },
+  deleteUser: (id) => {
+    const userId = toUserId(id)
+    if (!userId) return Promise.reject(new Error('Missing user id'))
+    return api.delete(`/api/Admin/users/${encodeURIComponent(userId)}`)
+  },
+  updateUserRole: (id, role) => {
+    const userId = toUserId(id)
+    if (!userId) return Promise.reject(new Error('Missing user id'))
+    return api.patch(`/api/Admin/users/${encodeURIComponent(userId)}/role`, { Role: role })
+  },
+  banUser: (id, data) => {
+    const userId = toUserId(id)
+    if (!userId) return Promise.reject(new Error('Missing user id'))
+    return api.put(`/api/Admin/users/${encodeURIComponent(userId)}/ban`, { Reason: data?.reason ?? data?.Reason })
+  },
+  unbanUser: (id) => {
+    const userId = toUserId(id)
+    if (!userId) return Promise.reject(new Error('Missing user id'))
+    return api.put(`/api/Admin/users/${encodeURIComponent(userId)}/unban`)
+  },
 }
 
 export const healthService = {

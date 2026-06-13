@@ -6,6 +6,7 @@ import Badge from '../../components/ui/Badge'
 import PageHeader, { EmptyState } from '../../components/ui/PageHeader'
 import { vocabularyService } from '../../services'
 import { getApiErrorMessage } from '../../utils/helpers'
+import { useLanguage } from '../../context/LanguageContext'
 
 const normalizeWord = (word) => ({
   id: word.wordId ?? word.id,
@@ -17,6 +18,7 @@ const normalizeWord = (word) => ({
 })
 
 export default function VocabularyPage() {
+  const { t } = useLanguage()
   const [search, setSearch] = useState('')
   const [words, setWords] = useState([])
   const [loading, setLoading] = useState(true)
@@ -34,7 +36,7 @@ export default function VocabularyPage() {
           : await vocabularyService.getSaved()
         if (active) setWords((Array.isArray(res.data) ? res.data : []).map(normalizeWord))
       } catch (err) {
-        if (active) setError(getApiErrorMessage(err, 'Could not load vocabulary.'))
+        if (active) setError(getApiErrorMessage(err, t('vocabulary.loadError', 'Could not load vocabulary.')))
       } finally {
         if (active) setLoading(false)
       }
@@ -57,26 +59,26 @@ export default function VocabularyPage() {
     try {
       await vocabularyService.deleteWord(wordId)
       setWords(w => w.filter(x => x.id !== wordId))
-      toast.success('Word removed.')
+      toast.success(t('wordRemoved', 'Word removed.'))
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Could not remove word.'))
+      toast.error(getApiErrorMessage(err, t('vocabulary.removeError', 'Could not remove word.')))
     }
   }
 
   return (
     <div className="mx-auto max-w-screen-xl px-4 py-6 sm:px-6 lg:py-8">
       <PageHeader
-        eyebrow="Vocabulary"
-        title="Saved words"
-        description="Your personal word bank from units and video lessons. Search, review, and prune it as you learn."
+        eyebrow={t('vocabulary', 'Vocabulary')}
+        title={t('savedWords', 'Saved words')}
+        description={t('vocabulary.description', 'Your personal word bank from units and video lessons. Search, review, and prune it as you learn.')}
         action={
           <div className="w-full md:w-72">
-            <Input placeholder="Search words..." prefix={<Search size={14} />} value={search} onChange={e => setSearch(e.target.value)} />
+            <Input placeholder={t('searchWords', 'Search words...')} prefix={<Search size={14} />} value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         }
       />
 
-      {loading && <p className="text-sm text-dark-500">Loading vocabulary...</p>}
+      {loading && <p className="text-sm text-dark-500">{t('loadingVocabulary', 'Loading vocabulary...')}</p>}
       {error && <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{getApiErrorMessage(error)}</p>}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -90,14 +92,14 @@ export default function VocabularyPage() {
               <button
                 onClick={() => removeWord(word.id)}
                 className="rounded-xl p-2 text-dark-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
-                aria-label={`Remove ${word.english}`}
+                aria-label={t('removeWord', 'Remove {{name}}').replace('{{name}}', word.english)}
               >
                 <Trash2 size={15} />
               </button>
             </div>
             <p className="min-h-12 text-sm leading-6 text-dark-600">{word.translation}</p>
             <div className="mt-5 flex items-center justify-between gap-3">
-              <Badge>Saved</Badge>
+              <Badge>{t('saved', 'Saved')}</Badge>
               <BookMarked size={16} className="text-dark-300" />
             </div>
           </article>
@@ -105,7 +107,7 @@ export default function VocabularyPage() {
       </div>
 
       {!loading && filtered.length === 0 && (
-        <EmptyState icon={BookMarked} title="No saved words found" description="Save words from unit pages and they will appear in this vocabulary bank." />
+        <EmptyState icon={BookMarked} title={t('noSavedWordsFound', 'No saved words found')} description={t('vocabulary.emptyDescription', 'Save words from unit pages and they will appear in this vocabulary bank.')} />
       )}
     </div>
   )

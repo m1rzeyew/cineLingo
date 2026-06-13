@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { Clapperboard } from 'lucide-react'
+import { useLanguage } from './context/LanguageContext'
 
 import GuestLayout from './layouts/GuestLayout'
 import ClientLayout from './layouts/ClientLayout'
@@ -35,20 +36,8 @@ import AdminQuizzesPage from './pages/admin/AdminQuizzesPage'
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage'
 import AdminNotificationsPage from './pages/admin/AdminNotificationsPage'
 
-const NotFound = () => (
-  <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-6 text-center text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-    <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-accent-500 text-white shadow-amber">
-      <Clapperboard size={30} />
-    </div>
-    <h1 className="mb-2 text-3xl font-black tracking-normal text-slate-950 dark:text-white">Scene Not Found</h1>
-    <p className="mb-6 text-slate-500 dark:text-slate-400">This page does not exist in our screenplay.</p>
-    <a href="/" className="rounded-xl bg-brand-500 px-6 py-3 font-semibold text-white shadow-amber transition-colors hover:bg-brand-600">
-      Go Home
-    </a>
-  </div>
-)
-
 export default function App() {
+  const { t } = useLanguage()
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/home" replace />} />
@@ -90,7 +79,21 @@ export default function App() {
         <Route path="notifications" element={<AdminNotificationsPage />} />
       </Route>
 
-      <Route path="*" element={<NotFound />} />
+      <Route
+        path="*"
+        element={(
+          <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-6 text-center text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-accent-500 text-white shadow-amber">
+              <Clapperboard size={30} />
+            </div>
+            <h1 className="mb-2 text-3xl font-black tracking-normal text-slate-950 dark:text-white">{t('notFound.title', 'Scene Not Found')}</h1>
+            <p className="mb-6 text-slate-500 dark:text-slate-400">{t('notFound.description', 'This page does not exist in our screenplay.')}</p>
+            <a href="/" className="rounded-xl bg-brand-500 px-6 py-3 font-semibold text-white shadow-amber transition-colors hover:bg-brand-600">
+              {t('goHome', 'Go Home')}
+            </a>
+          </div>
+        )}
+      />
     </Routes>
   )
 }
