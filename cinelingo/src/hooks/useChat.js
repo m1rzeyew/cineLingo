@@ -3,14 +3,14 @@ import * as signalR from '@microsoft/signalr'
 
 const HUB_URL = import.meta.env.VITE_SIGNALR_HUB_URL || 'http://localhost:5267/hubs/chat'
 
-export function useChat() {
+export function useChat(enabled = true) {
   const [messages, setMessages] = useState([])
   const [connected, setConnected] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const connectionRef = useRef(null)
 
   const connect = useCallback(async () => {
-    if (connectionRef.current) return
+    if (!enabled || connectionRef.current) return
     setConnecting(true)
     const token = localStorage.getItem('cinelingo_token')
 
@@ -39,12 +39,11 @@ export function useChat() {
       await connection.start()
       connectionRef.current = connection
       setConnected(true)
-    } catch (err) {
-      console.warn('Chat connection failed:', err)
+    } catch {
     } finally {
       setConnecting(false)
     }
-  }, [])
+  }, [enabled])
 
   const disconnect = useCallback(async () => {
     if (connectionRef.current) {
@@ -60,16 +59,16 @@ export function useChat() {
     try {
       await connectionRef.current.invoke('SendMessage', receiverId, content.trim())
       return true
-    } catch (err) {
-      console.warn('Send failed:', err)
+    } catch {
       return false
     }
   }, [connected])
 
   useEffect(() => {
+    if (!enabled) return undefined
     connect()
     return () => { disconnect() }
-  }, [connect, disconnect])
+  }, [connect, disconnect, enabled])
 
   return { messages, connected, connecting, sendMessage }
 }

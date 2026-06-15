@@ -31,7 +31,7 @@ const normalizeMessage = (message) => ({
 export default function ChatSidebar({ isOpen, onToggle }) {
   const { t } = useLanguage()
   const { user } = useAuth()
-  const { messages: liveMessages, connected, connecting, sendMessage } = useChat()
+  const { messages: liveMessages, connected, connecting, sendMessage } = useChat(isOpen)
   const [conversations, setConversations] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [messages, setMessages] = useState([])
@@ -113,7 +113,6 @@ export default function ChatSidebar({ isOpen, onToggle }) {
     const ok = await sendMessage(selected.otherUserId, text)
     if (ok) setInput('')
     else toast.error(t('chat.sendError', 'Could not send message.'))
-    // TODO: persist sent messages when the backend exposes a Swagger-supported send-message endpoint.
   }
 
   const handleKey = (e) => {

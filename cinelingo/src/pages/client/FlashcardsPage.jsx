@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Layers3, RotateCcw, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import PageHeader, { EmptyState } from '../../components/ui/PageHeader'
@@ -7,16 +8,17 @@ import { flashcardService } from '../../services'
 import { useLanguage } from '../../context/LanguageContext'
 
 const normalizeCard = (card) => ({
-  id: card.id ?? card.wordId,
-  english: card.term ?? card.english,
-  phonetic: card.pronunciation ?? card.phonetic,
-  translation: card.definition ?? card.translation,
-  exampleSentence: card.exampleSentence,
-  partOfSpeech: card.partOfSpeech || 'Word',
+  id: card.id ?? card.Id ?? card.wordId ?? card.WordId,
+  english: card.term ?? card.Term ?? card.name ?? card.Name ?? card.english,
+  phonetic: card.pronunciation ?? card.Pronunciation ?? card.pronuncatiation ?? card.Pronuncatiation ?? card.phonetic,
+  translation: card.definition ?? card.Definition ?? card.description ?? card.Description ?? card.translation,
+  exampleSentence: card.exampleSentence ?? card.ExampleSentence ?? card.examples?.[0] ?? card.Examples?.[0],
+  partOfSpeech: card.partOfSpeech || card.PartOfSpeech || 'Word',
 })
 
 export default function FlashcardsPage() {
   const { t } = useLanguage()
+  const { unitId } = useParams()
   const [index, setIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [done, setDone] = useState([])
@@ -31,7 +33,7 @@ export default function FlashcardsPage() {
       setLoading(true)
       setError(null)
       try {
-        const res = await flashcardService.getDeck()
+        const res = await flashcardService.getDeck(unitId)
         if (active) setCards((Array.isArray(res.data) ? res.data : []).map(normalizeCard))
       } catch (err) {
         if (active) setError(getApiErrorMessage(err, t('flashcards.loadError', 'Could not load flashcards.')))
@@ -42,7 +44,7 @@ export default function FlashcardsPage() {
 
     load()
     return () => { active = false }
-  }, [])
+  }, [unitId])
 
   const card = cards[index]
   const total = cards.length
@@ -55,7 +57,15 @@ export default function FlashcardsPage() {
     }
     setFlipped(false)
     setDone(p => p.includes(index) ? p : [...p, index])
-    setTimeout(() => { if (index < total - 1) setIndex(i => i + 1) }, 180)
+    setTimeout(async () => {
+      if (index < total - 1) {
+        setIndex(i => i + 1)
+        return
+      }
+      if (unitId) {
+        try { await flashcardService.complete(unitId) } catch {}
+      }
+    }, 180)
   }
 
   const restart = () => {

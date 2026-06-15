@@ -8,15 +8,33 @@ import { quizService } from '../../services'
 import { useLanguage } from '../../context/LanguageContext'
 
 const optionList = (question) => [
-  { id: 'A', text: question.optionA },
-  { id: 'B', text: question.optionB },
-  { id: 'C', text: question.optionC },
-  { id: 'D', text: question.optionD },
+  { id: 'A', text: question.optionA ?? question.OptionA },
+  { id: 'B', text: question.optionB ?? question.OptionB },
+  { id: 'C', text: question.optionC ?? question.OptionC },
+  { id: 'D', text: question.optionD ?? question.OptionD },
 ].filter(opt => opt.text)
+
+const normalizeQuestion = (question) => ({
+  ...question,
+  id: question.id ?? question.Id,
+  questionText: question.questionText ?? question.QuestionText,
+  optionA: question.optionA ?? question.OptionA,
+  optionB: question.optionB ?? question.OptionB,
+  optionC: question.optionC ?? question.OptionC,
+  optionD: question.optionD ?? question.OptionD,
+})
+
+const normalizeQuiz = (quiz) => ({
+  ...quiz,
+  id: quiz.id ?? quiz.Id,
+  unitId: quiz.unitId ?? quiz.UnitId,
+  title: quiz.title ?? quiz.Title,
+  questions: Array.isArray(quiz.questions ?? quiz.Questions) ? (quiz.questions ?? quiz.Questions).map(normalizeQuestion) : [],
+})
 
 export default function QuizPage() {
   const { t } = useLanguage()
-  const { quizId } = useParams()
+  const { quizId, unitId } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
   const ctx = useOutletContext()
@@ -38,10 +56,11 @@ export default function QuizPage() {
       setLoading(true)
       setError(null)
       try {
-        const res = location.state?.unitId
-          ? await quizService.getByUnit(location.state.unitId)
+        const nextUnitId = unitId ?? location.state?.unitId
+        const res = nextUnitId
+          ? await quizService.getByUnit(nextUnitId)
           : await quizService.getById(quizId)
-        if (active) setQuiz(res.data)
+        if (active) setQuiz(normalizeQuiz(res.data))
       } catch (err) {
         if (active) setError(getApiErrorMessage(err, t('quiz.loadError', 'Could not load quiz.')))
       } finally {
@@ -51,7 +70,7 @@ export default function QuizPage() {
 
     load()
     return () => { active = false }
-  }, [location.state?.unitId, quizId])
+  }, [location.state?.unitId, quizId, unitId])
 
   const questions = useMemo(() => Array.isArray(quiz?.questions) ? quiz.questions : [], [quiz])
   const q = questions[current]

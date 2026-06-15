@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5267').replace(/\/+$/, '')
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5267').replace(/\/+$/, '')
 const TOKEN_KEY = 'cinelingo_token'
 const REFRESH_KEY = 'cinelingo_refresh_token'
 const USER_KEY = 'cinelingo_user'
@@ -9,7 +9,7 @@ const NAME_ID_CLAIM = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nam
 let refreshPromise = null
 
 const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 })
@@ -48,7 +48,7 @@ const refreshAccessToken = async () => {
   const refreshToken = localStorage.getItem(REFRESH_KEY)
   if (!refreshToken) throw new Error('Missing refresh token')
 
-  const res = await axios.post(`${BASE_URL}/api/Auth/refresh-token`, { RefreshToken: refreshToken }, {
+  const res = await axios.post(`${API_BASE_URL}/api/Auth/refresh-token`, { RefreshToken: refreshToken }, {
     headers: { 'Content-Type': 'application/json' },
     timeout: 15000,
   })

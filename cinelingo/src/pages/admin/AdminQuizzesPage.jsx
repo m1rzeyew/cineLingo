@@ -10,8 +10,11 @@ import { levelQuizService, quizService, unitService } from '../../services'
 import { getApiErrorMessage, showApiErrorOnce } from '../../utils/helpers'
 import { useLanguage } from '../../context/LanguageContext'
 
+const QUIZ_QUESTION_COUNT = 10
+const QUIZ_OPTIONS = ['A', 'B', 'C', 'D']
 const blankQuestion = () => ({ questionText: '', optionA: '', optionB: '', optionC: '', optionD: '', correctOption: 'A' })
-const EMPTY = { unitId: '', title: '', passingScore: 70, questions: [blankQuestion()] }
+const blankQuestions = () => Array.from({ length: QUIZ_QUESTION_COUNT }, blankQuestion)
+const EMPTY = { unitId: '', title: '', passingScore: 70, questions: blankQuestions() }
 
 const normalizeQuestion = (question) => ({
   questionText: question.questionText ?? question.QuestionText ?? '',
@@ -70,7 +73,6 @@ export default function AdminQuizzesPage() {
     } catch (err) {
       const status = err?.response?.status
       if (status === 500) {
-        console.error('Quiz list failed with 500:', err)
         setQuizzes([])
       } else {
         showApiErrorOnce(err, t('admin.quizzes.loadError', 'Could not load quizzes.'))
@@ -115,7 +117,7 @@ export default function AdminQuizzesPage() {
     setTarget(quiz)
 
     if (!quiz) {
-      setForm({ ...EMPTY, unitId })
+      setForm({ ...EMPTY, unitId, questions: blankQuestions() })
       return
     }
 
@@ -125,7 +127,7 @@ export default function AdminQuizzesPage() {
         unitId: String(fullQuiz?.unitId ?? fullQuiz?.UnitId ?? quiz.unitId ?? quiz.UnitId ?? ''),
         title: fullQuiz?.title ?? fullQuiz?.Title ?? '',
         passingScore: fullQuiz?.passingScore ?? fullQuiz?.PassingScore ?? 70,
-        questions: (fullQuiz?.questions?.length ? fullQuiz.questions : [blankQuestion()]).map(normalizeQuestion),
+        questions: (fullQuiz?.questions?.length ? fullQuiz.questions : blankQuestions()).map(normalizeQuestion),
       })
     } catch (err) {
       showApiErrorOnce(err, t('admin.quizzes.loadDetailError', 'Could not load quiz details.'))
@@ -142,16 +144,46 @@ export default function AdminQuizzesPage() {
     }
   }
 
+  const validateForm = () => {
+    const nextUnitId = safeNumber(form.unitId)
+    const score = safeNumber(form.passingScore)
+    const title = String(form.title || '').trim()
+    const questions = Array.isArray(form.questions) ? form.questions : []
+
+    if (nextUnitId == null) return t('admin.quizzes.validation.unit', 'Select a valid Unit.')
+    if (!title) return t('admin.quizzes.validation.title', 'Quiz title is required.')
+    if (score == null || score < 1 || score > 100) return t('admin.quizzes.validation.passingScore', 'Passing score must be between 1 and 100.')
+    if (questions.length !== QUIZ_QUESTION_COUNT) return t('admin.quizzes.validation.questionCount', 'Quiz must have exactly 10 questions.')
+
+    const invalidQuestion = questions.find(question => {
+      const requiredText = [
+        question.questionText,
+        question.optionA,
+        question.optionB,
+        question.optionC,
+        question.optionD,
+      ].every(value => String(value || '').trim())
+      return !requiredText || !QUIZ_OPTIONS.includes(question.correctOption)
+    })
+
+    return invalidQuestion ? t('admin.quizzes.validation.questions', 'Each question must include text, options A-D, and a valid correct option.') : null
+  }
+
   const submit = async (e) => {
     e.preventDefault()
     if (saving) return
+    const validationError = validateForm()
+    if (validationError) {
+      toast.error(validationError)
+      return
+    }
     setSaving(true)
     try {
       const res = target ? await quizService.update(target.id, form) : await quizService.create(form)
       const saved = normalize(res.data)
       setModal(null)
       setTarget(null)
-      setForm(EMPTY)
+      setForm({ ...EMPTY, questions: blankQuestions() })
       await loadQuizzes(saved.unitId || unitId)
       toast.success(target ? t('admin.quizzes.updated', 'Quiz updated.') : t('admin.quizzes.created', 'Quiz created.'))
     } catch (err) {
@@ -299,10 +331,25 @@ export default function AdminQuizzesPage() {
           </div>
           <Input label={t('title', 'Title')} value={form.title} onChange={set('title')} required />
           <Input label={t('passingScore', 'Passing Score')} type="number" min="1" max="100" value={form.passingScore} onChange={set('passingScore')} required />
+          <p className="text-xs font-semibold text-dark-500">
+            {form.questions.length} / {QUIZ_QUESTION_COUNT} {t('questions', 'Questions')}
+          </p>
           <div className="space-y-4">
             {form.questions.map((question, index) => (
               <div key={index} className="rounded-2xl border border-cream-200 bg-cream-50 p-4">
-                <Input label={`${t('question', 'Question')} ${index + 1}`} value={question.questionText} onChange={e => setQuestion(index, 'questionText', e.target.value)} required />
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <span className="text-sm font-bold text-dark-800">{t('question', 'Question')} {index + 1}</span>
+                  <button
+                    type="button"
+                    onClick={() => setForm(prev => ({ ...prev, questions: prev.questions.filter((_, i) => i !== index) }))}
+                    className="rounded-lg p-1.5 text-dark-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label={t('removeQuestion', 'Remove question')}
+                    disabled={form.questions.length <= 1}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                <Input label={t('questionText', 'Question Text')} value={question.questionText} onChange={e => setQuestion(index, 'questionText', e.target.value)} required />
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   {['A', 'B', 'C', 'D'].map(letter => (
                     <Input key={letter} label={`${t('option', 'Option')} ${letter}`} value={question[`option${letter}`]} onChange={e => setQuestion(index, `option${letter}`, e.target.value)} required />
@@ -317,7 +364,7 @@ export default function AdminQuizzesPage() {
               </div>
             ))}
           </div>
-          <Button type="button" variant="secondary" onClick={() => setForm(prev => ({ ...prev, questions: [...prev.questions, blankQuestion()] }))}>
+          <Button type="button" variant="secondary" disabled={form.questions.length >= QUIZ_QUESTION_COUNT} onClick={() => setForm(prev => ({ ...prev, questions: [...prev.questions, blankQuestion()] }))}>
             {t('addQuestion', 'Add Question')}
           </Button>
           <div className="flex gap-3 pt-2">

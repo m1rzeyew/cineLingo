@@ -55,7 +55,9 @@ export default function App() {
         <Route path="/dashboard" element={<ProtectedRoute redirectAdmin><DashboardPage /></ProtectedRoute>} />
         <Route path="/units" element={<UnitsPage />} />
         <Route path="/units/:id" element={<UnitDetailPage />} />
+        <Route path="/quiz/unit/:unitId" element={<QuizPage />} />
         <Route path="/quiz/:quizId" element={<QuizPage />} />
+        <Route path="/flashcards/:unitId" element={<FlashcardsPage />} />
         <Route path="/quizzes" element={<QuizHistoryPage />} />
         <Route path="/vocabulary" element={<VocabularyPage />} />
         <Route path="/flashcards" element={<FlashcardsPage />} />

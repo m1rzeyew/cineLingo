@@ -1,5 +1,6 @@
 import { clsx } from 'clsx'
 import toast from 'react-hot-toast'
+import { API_BASE_URL } from '../api/axiosConfig'
 
 export const cn = (...inputs) => clsx(inputs)
 
@@ -8,18 +9,36 @@ export function getApiErrorMessage(error, fallback = 'Something went wrong.') {
 
   if (!data) return fallback
   if (typeof data === 'string') return data
-  if (data.message) return data.message
-  if (data.error?.message) return data.error.message
-  if (error?.message) return error.message
 
   if (data.errors && typeof data.errors === 'object') {
     const messages = Object.values(data.errors).flat().filter(Boolean)
     if (messages.length) return messages.join(' ')
   }
 
+  if (data.message) return data.message
   if (data.title) return data.title
+  if (data.error?.message) return data.error.message
+  if (error?.message) return error.message
 
   return fallback
+}
+
+export const isWindowsPath = (value) => {
+  const path = typeof value === 'string' ? value.trim() : ''
+  return /^[a-zA-Z]:[\\/]/.test(path) || path.startsWith('\\\\')
+}
+
+export const resolveBackendMediaUrl = (value) => {
+  const path = typeof value === 'string' ? value.trim() : ''
+  if (!path || isWindowsPath(path)) return ''
+  if (/^https?:\/\//i.test(path)) return path
+  if (path.startsWith('//')) return `${window.location.protocol}${path}`
+
+  try {
+    return new URL(path, `${API_BASE_URL}/`).toString()
+  } catch {
+    return ''
+  }
 }
 
 export const formatDate = (date) =>

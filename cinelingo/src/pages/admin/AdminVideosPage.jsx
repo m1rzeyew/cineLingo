@@ -147,7 +147,7 @@ export default function AdminVideosPage() {
           )}
           <Input label={t('title', 'Title')} value={form.title} onChange={set('title')} required />
           <Input label={t('videoFile', 'Video File')} type="file" accept="video/*" onChange={set('videoFile')} required={!target} />
-          <Input label={t('subtitleFile', 'Subtitle File')} type="file" accept=".srt,.vtt,.txt" onChange={set('subtitleFile')} />
+          <Input label={t('subtitleFile', 'Subtitle File')} type="file" accept=".srt,.vtt" onChange={set('subtitleFile')} />
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="secondary" fullWidth onClick={() => setModal(null)}>{t('cancel', 'Cancel')}</Button>
             <Button type="submit" fullWidth>{target ? t('saveChanges', 'Save Changes') : t('uploadVideo', 'Upload Video')}</Button>

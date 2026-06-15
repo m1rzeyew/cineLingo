@@ -6,11 +6,40 @@ import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/PageHeader'
-import { getApiErrorMessage, levelLabel } from '../../utils/helpers'
+import { getApiErrorMessage, levelLabel, resolveBackendMediaUrl } from '../../utils/helpers'
 import { quizService, unitService, videoService, wordService } from '../../services'
 import { useLanguage } from '../../context/LanguageContext'
 
 const secondsToMinutes = (seconds) => Math.max(1, Math.round((Number(seconds) || 0) / 60))
+const getBackendVideoUrl = (video) => {
+  const value = video?.videoUrl ?? video?.VideoUrl
+  return resolveBackendMediaUrl(value)
+}
+const getVideoId = (video) => video?.id ?? video?.Id
+const getThumbnailUrl = (video) => resolveBackendMediaUrl(video?.thumbnailUrl ?? video?.ThumbnailUrl)
+const getSubtitleUrl = (video) =>
+  resolveBackendMediaUrl(
+    video?.subtitleUrl ?? video?.SubtitleUrl ??
+    video?.srtUrl ?? video?.SrtUrl ??
+    video?.transcriptUrl ?? video?.TranscriptUrl ??
+    video?.captionsUrl ?? video?.CaptionsUrl
+  )
+const getVideoSubtitles = (video) => {
+  const subtitles = video?.subtitles ?? video?.Subtitles
+  if (!Array.isArray(subtitles)) return []
+
+  return subtitles
+    .map((subtitle) => {
+      const startTime = Number(subtitle.startTime ?? subtitle.StartTime)
+      const endTime = Number(subtitle.endTime ?? subtitle.EndTime)
+      const text = String(subtitle.text ?? subtitle.Text ?? '').trim()
+      return { startTime, endTime, text }
+    })
+    .filter((subtitle) => Number.isFinite(subtitle.startTime) && Number.isFinite(subtitle.endTime) && subtitle.text)
+    .sort((a, b) => a.startTime - b.startTime)
+}
+const getActiveSubtitle = (subtitles, currentTime) =>
+  subtitles.find((subtitle) => currentTime >= subtitle.startTime && currentTime <= subtitle.endTime)
 
 export default function UnitDetailPage() {
   const { t } = useLanguage()
@@ -21,6 +50,7 @@ export default function UnitDetailPage() {
   const [videoOpen, setVideoOpen] = useState(false)
   const [video, setVideo] = useState(null)
   const [videoLoading, setVideoLoading] = useState(false)
+  const [videoTime, setVideoTime] = useState(0)
   const [unit, setUnit] = useState(null)
   const [quiz, setQuiz] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -28,6 +58,10 @@ export default function UnitDetailPage() {
 
   useEffect(() => {
     let active = true
+    setVideoOpen(false)
+    setVideo(null)
+    setVideoLoading(false)
+    setVideoTime(0)
 
     const load = async () => {
       setLoading(true)
@@ -56,24 +90,27 @@ export default function UnitDetailPage() {
   const handleWatch = async () => {
     setVideoOpen(true)
     setChatOpen(true)
+    setVideo(null)
+    setVideoTime(0)
     setVideoLoading(true)
     try {
       await unitService.start(id)
-      const clipId = unit?.videoClip?.id ?? unit?.videoClip?.Id
-      if (clipId) {
-        const res = await videoService.getById(clipId)
-        const nextVideo = res.data
-        setVideo(nextVideo)
-        await videoService.markWatched(clipId)
+      const res = await videoService.getByUnit(id)
+      const nextVideo = res.data
+
+      setVideo(nextVideo)
+      const nextVideoUrl = getBackendVideoUrl(nextVideo)
+      if (!nextVideoUrl) {
         return
       }
 
-      const res = await videoService.getByUnit(id)
-      setVideo(res.data)
-      const fallbackId = res.data?.id ?? res.data?.Id
-      if (fallbackId) await videoService.markWatched(fallbackId)
+      const nextVideoId = getVideoId(nextVideo)
+      if (nextVideoId) await videoService.markWatched(nextVideoId)
     } catch (err) {
-      toast.error(getApiErrorMessage(err, t('unitDetail.videoLoadError', 'Could not load the video.')))
+      setVideo(null)
+      if (err?.response?.status !== 404) {
+        toast.error(getApiErrorMessage(err, t('unitDetail.videoLoadError', 'Could not load the video.')))
+      }
     } finally {
       setVideoLoading(false)
     }
@@ -85,6 +122,16 @@ export default function UnitDetailPage() {
       toast.success(t('wordSaved', 'Word saved.'))
     } catch (err) {
       toast.error(getApiErrorMessage(err, t('unitDetail.saveWordError', 'Could not save word.')))
+    }
+  }
+
+  const handleCompleteUnit = async () => {
+    try {
+      await unitService.complete(id)
+      toast.success(t('unitCompleted', 'Unit completed.'))
+      setUnit(prev => prev ? { ...prev, isCompleted: true, IsCompleted: true } : prev)
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, t('unitDetail.completeError', 'Could not complete this unit.')))
     }
   }
 
@@ -106,11 +153,21 @@ export default function UnitDetailPage() {
   }
 
   const levelName = unit.levelName || (typeof unit.level === 'number' ? levelLabel(unit.level) : unit.level) || levelLabel(unit.englishLevel)
-  const words = Array.isArray(unit.words) ? unit.words : []
+  const words = (Array.isArray(unit.words ?? unit.Words) ? (unit.words ?? unit.Words) : []).map(word => ({
+    ...word,
+    id: word.id ?? word.Id,
+    term: word.term ?? word.Term,
+    definition: word.definition ?? word.Definition,
+    pronunciation: word.pronunciation ?? word.Pronunciation,
+    exampleSentence: word.exampleSentence ?? word.ExampleSentence,
+  }))
   const duration = secondsToMinutes(unit.videoClip?.durationSeconds)
-  const heroImage = unit.imageUrl || unit.videoClip?.thumbnailUrl
-  const videoUrl = video?.videoUrl || video?.VideoUrl || unit.videoClip?.videoUrl || unit.videoClip?.VideoUrl
-  const videoTitle = video?.title || video?.Title || unit.videoClip?.title || unit.videoClip?.Title || 'Video clip'
+  const heroImage = resolveBackendMediaUrl(unit.imageUrl ?? unit.ImageUrl) || getThumbnailUrl(unit.videoClip)
+  const videoUrl = getBackendVideoUrl(video)
+  const posterUrl = getThumbnailUrl(video) || getThumbnailUrl(unit.videoClip)
+  const subtitleUrl = getSubtitleUrl(video)
+  const subtitles = getVideoSubtitles(video)
+  const activeSubtitle = getActiveSubtitle(subtitles, videoTime)
 
   return (
     <div className="mx-auto max-w-screen-xl px-5 py-8 sm:px-6">
@@ -150,8 +207,14 @@ export default function UnitDetailPage() {
               <Button size="lg" variant={videoOpen ? 'secondary' : 'brand'} onClick={handleWatch}>
                 <Play size={17} /> {videoOpen ? t('watching', 'Watching') : t('watchVideo', 'Watch Video')}
               </Button>
-              <Button size="lg" variant="secondary" disabled={!quiz?.id} onClick={() => { setChatOpen(true); navigate(`/quiz/${quiz.id}`, { state: { unitId: unit.id } }) }}>
+              <Button size="lg" variant="secondary" onClick={() => navigate(`/flashcards/${unit.id}`)}>
+                <BookmarkPlus size={17} /> {t('flashcards', 'Flashcards')}
+              </Button>
+              <Button size="lg" variant="secondary" disabled={!quiz?.id} onClick={() => { setChatOpen(true); navigate(`/quiz/unit/${unit.id}`) }}>
                 <BookOpen size={17} /> {t('takeQuiz', 'Take Quiz')}
+              </Button>
+              <Button size="lg" variant="secondary" onClick={handleCompleteUnit}>
+                <BookOpen size={17} /> {t('completeUnit', 'Complete Unit')}
               </Button>
             </div>
           </div>
@@ -168,22 +231,39 @@ export default function UnitDetailPage() {
               </div>
             </div>
           ) : videoUrl ? (
-            <video
-              controls
-              className="aspect-video w-full bg-slate-950"
-              poster={video?.thumbnailUrl || video?.ThumbnailUrl || unit.videoClip?.thumbnailUrl || unit.videoClip?.ThumbnailUrl}
-            >
-              <source src={videoUrl} />
-              {t('videoPlaybackUnsupported', 'Your browser does not support video playback.')}
-            </video>
+            <>
+              <div className="relative bg-slate-950">
+                <video
+                  key={videoUrl}
+                  controls
+                  src={videoUrl}
+                  className="aspect-video w-full bg-slate-950"
+                  poster={posterUrl}
+                  onLoadedMetadata={() => setVideoTime(0)}
+                  onTimeUpdate={(event) => setVideoTime(event.currentTarget.currentTime)}
+                >
+                  {subtitleUrl && <track kind="subtitles" src={subtitleUrl} srcLang="en" label="English" default />}
+                  {t('videoPlaybackUnsupported', 'Your browser does not support video playback.')}
+                </video>
+                {activeSubtitle && (
+                  <div className="pointer-events-none absolute inset-x-4 bottom-14 flex justify-center sm:bottom-16">
+                    <p className="max-w-3xl rounded bg-slate-950/82 px-4 py-2 text-center text-base font-semibold leading-7 text-white shadow-lg sm:text-lg">
+                      {activeSubtitle.text}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {!subtitleUrl && subtitles.length === 0 && (
+                <div className="border-t border-white/10 px-5 py-3 text-sm font-semibold text-white/60">
+                  {t('noSubtitlesAvailable', 'No subtitles available')}
+                </div>
+              )}
+            </>
           ) : (
             <div className="flex aspect-video items-center justify-center px-6 text-center text-white/60">
               <div>
                 <Play size={44} className="mx-auto mb-3 opacity-50" />
-                <p className="text-sm font-semibold">{videoTitle}</p>
-                <p className="mt-1 max-w-md text-xs leading-5 text-white/35">
-                  No published video URL was returned for this unit.
-                </p>
+                <p className="text-sm font-semibold">{t('videoNotAvailable', 'Video is not available')}</p>
               </div>
             </div>
           )}

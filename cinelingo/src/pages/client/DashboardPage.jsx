@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, BookOpen, Flame, Lock, Play, Star } from 'lucide-react'
+import { ArrowRight, BookOpen, Flame, Play, Star } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { StatCard } from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
-import PaywallModal from '../../components/common/PaywallModal'
 import { EmptyState } from '../../components/ui/PageHeader'
-import { cn, levelLabel } from '../../utils/helpers'
+import { levelLabel, resolveBackendMediaUrl } from '../../utils/helpers'
 import { profileService, quizService, streakService, unitService, vocabularyService } from '../../services'
 import { useLanguage } from '../../context/LanguageContext'
 
@@ -15,8 +14,8 @@ const list = (value) => Array.isArray(value) ? value : []
 
 const normalizeUnit = (unit) => ({
   ...unit,
+  imageUrl: resolveBackendMediaUrl(unit.imageUrl ?? unit.ImageUrl),
   levelName: unit.levelName || unit.level || levelLabel(unit.englishLevel),
-  requiresPremium: unit.requiresPremium ?? Number(unit.englishLevel) > 0,
   isCompleted: unit.isCompleted || unit.status === 'Completed',
 })
 
@@ -24,7 +23,6 @@ export default function DashboardPage() {
   const { t } = useLanguage()
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [paywallOpen, setPaywallOpen] = useState(false)
   const [units, setUnits] = useState([])
   const [quizHistory, setQuizHistory] = useState([])
   const [stats, setStats] = useState(null)
@@ -58,7 +56,6 @@ export default function DashboardPage() {
   }, [])
 
   const handleContinue = (unit) => {
-    if (unit.requiresPremium && !user?.isPremium) { setPaywallOpen(true); return }
     navigate(`/units/${unit.id}`)
   }
 
@@ -126,11 +123,10 @@ export default function DashboardPage() {
               <EmptyState icon={BookOpen} title={t('noUnitsAvailableYet', 'No units available yet')} description={t('dashboard.noUnitsDescription', 'Once units are published, they will appear here.')} />
             )}
             {units.map((unit) => {
-              const locked = unit.requiresPremium && !user?.isPremium
               return (
                 <article key={unit.id} className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card-hover dark:border-slate-700 dark:bg-slate-800 dark:hover:border-brand-500">
-                  <div className={cn('flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl', locked ? 'bg-slate-800' : 'bg-brand-50 dark:bg-brand-500/10')}>
-                    {unit.imageUrl ? <img src={unit.imageUrl} alt="" className="h-full w-full object-cover" /> : locked ? <Lock size={18} className="text-white/60" /> : <Play size={18} className="text-brand-600 dark:text-brand-300" />}
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-50 dark:bg-brand-500/10">
+                    {unit.imageUrl ? <img src={unit.imageUrl} alt="" className="h-full w-full object-cover" /> : <Play size={18} className="text-brand-600 dark:text-brand-300" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-bold text-slate-950 dark:text-white">{unit.title}</p>
@@ -138,11 +134,10 @@ export default function DashboardPage() {
                       <Badge variant="brand">{unit.levelName}</Badge>
                       <span className="text-xs font-medium text-slate-400 dark:text-slate-500">{unit.wordCount ?? 0} {t('words', 'words')}</span>
                       {unit.isCompleted && <Badge variant="success">{t('done', 'Done')}</Badge>}
-                      {locked && <Badge variant="warning">{t('premium', 'Premium')}</Badge>}
                     </div>
                   </div>
                   <Button size="sm" variant={unit.isCompleted ? 'secondary' : 'primary'} onClick={() => handleContinue(unit)}>
-                    {locked ? t('unlock', 'Unlock') : unit.isCompleted ? t('review', 'Review') : t('continue', 'Continue')}
+                    {unit.isCompleted ? t('review', 'Review') : t('continue', 'Continue')}
                   </Button>
                 </article>
               )
@@ -174,8 +169,6 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
-
-      <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} onSuccess={() => setPaywallOpen(false)} />
     </div>
   )
 }
